@@ -3,8 +3,8 @@
 #include "UISystem.h"
 
 std::vector<std::shared_ptr<RunNode>> RunNode::root_;
-int RunNode::prev_present_ticks_ = 0;
-int RunNode::refresh_interval_ = 16;
+double RunNode::global_prev_present_ticks_ = 0;
+double RunNode::refresh_interval_ = 16.666666;
 int RunNode::render_message_ = 0;
 
 RunNode::~RunNode()
@@ -13,9 +13,9 @@ RunNode::~RunNode()
 
 void RunNode::drawAll()
 {
-    //´Ó×îºóÒ»¸ö¶ÀÕ¼ÆÁÄ»µÄ³¡¾°¿ªÊ¼»­
+    //ä»æœ€åä¸€ä¸ªç‹¬å å±å¹•çš„åœºæ™¯å¼€å§‹ç”»
     int begin_base = 0;
-    for (int i = 0; i < root_.size(); i++)    //¼ÇÂ¼×îºóÒ»¸öÈ«ÆÁµÄ²ã
+    for (int i = 0; i < root_.size(); i++)    //è®°å½•æœ€åä¸€ä¸ªå…¨å±çš„å±‚
     {
         root_[i]->backRun();
         root_[i]->current_frame_++;
@@ -24,24 +24,13 @@ void RunNode::drawAll()
             begin_base = i;
         }
     }
-    for (int i = begin_base; i < root_.size(); i++)    //´Ó×îºóÒ»¸öÈ«ÆÁ²ã¿ªÊ¼»­
+    for (int i = begin_base; i < root_.size(); i++)    //ä»æœ€åä¸€ä¸ªå…¨å±å±‚å¼€å§‹ç”»
     {
         root_[i]->drawSelfChilds();
     }
 }
 
-//ÉèÖÃÎ»ÖÃ£¬»á¸Ä±ä×Ó½ÚµãµÄÎ»ÖÃ
-void RunNode::setPosition(int x, int y)
-{
-    for (auto c : childs_)
-    {
-        c->setPosition(c->x_ + x - x_, c->y_ + y - y_);
-    }
-    x_ = x;
-    y_ = y;
-}
-
-//´Ó»æÖÆµÄ¸ù½ÚµãÒÆ³ı
+//ä»ç»˜åˆ¶çš„æ ¹èŠ‚ç‚¹ç§»é™¤
 std::shared_ptr<RunNode> RunNode::removeFromDraw(std::shared_ptr<RunNode> element)
 {
     if (element == nullptr)
@@ -68,21 +57,21 @@ std::shared_ptr<RunNode> RunNode::removeFromDraw(std::shared_ptr<RunNode> elemen
     return nullptr;
 }
 
-//Ìí¼Ó×Ó½Úµã
+//æ·»åŠ å­èŠ‚ç‚¹
 void RunNode::addChild(std::shared_ptr<RunNode> element)
 {
     element->setTag(childs_.size());
     childs_.push_back(element);
 }
 
-//Ìí¼Ó½Úµã²¢Í¬Ê±ÉèÖÃ×Ó½ÚµãµÄÎ»ÖÃ
+//æ·»åŠ èŠ‚ç‚¹å¹¶åŒæ—¶è®¾ç½®å­èŠ‚ç‚¹çš„ä½ç½®
 void RunNode::addChild(std::shared_ptr<RunNode> element, int x, int y)
 {
     addChild(element);
     element->setPosition(x_ + x, y_ + y);
 }
 
-//ÒÆ³ıÄ³¸ö½Úµã
+//ç§»é™¤æŸä¸ªèŠ‚ç‚¹
 void RunNode::removeChild(std::shared_ptr<RunNode> element)
 {
     for (int i = 0; i < childs_.size(); i++)
@@ -95,26 +84,21 @@ void RunNode::removeChild(std::shared_ptr<RunNode> element)
     }
 }
 
-//Çå³ı×Ó½Úµã
+//æ¸…é™¤å­èŠ‚ç‚¹
 void RunNode::clearChilds()
 {
     childs_.clear();
 }
 
-//»­³ö×ÔÉíºÍ×Ó½Úµã
-void RunNode::drawSelfChilds()
+//è®¾ç½®ä½ç½®ï¼Œä¼šæ”¹å˜å­èŠ‚ç‚¹çš„ä½ç½®
+void RunNode::setPosition(int x, int y)
 {
-    if (visible_)
+    for (auto c : childs_)
     {
-        draw();
-        for (auto c : childs_)
-        {
-            if (c->visible_)
-            {
-                c->drawSelfChilds();
-            }
-        }
+        c->setPosition(c->x_ + x - x_, c->y_ + y - y_);
     }
+    x_ = x;
+    y_ = y;
 }
 
 void RunNode::setAllChildState(int s)
@@ -135,7 +119,7 @@ void RunNode::setAllChildVisible(bool v)
 
 int RunNode::findNextVisibleChild(int i0, Direct direct)
 {
-    if (direct == None || childs_.size() == 0)
+    if (direct == DIrectNone || childs_.size() == 0)
     {
         return i0;
     }
@@ -143,7 +127,7 @@ int RunNode::findNextVisibleChild(int i0, Direct direct)
 
     int min1 = 9999, min2 = 9999 * 2;
     int i1 = i0;
-    //1±íÊ¾°´¼ü·½ÏòÉÏµÄ¾àÀë£¬2±íÊ¾´¹Ö±ÓÚ°´¼ü·½ÏòÉÏµÄ¾àÀë
+    //1è¡¨ç¤ºæŒ‰é”®æ–¹å‘ä¸Šçš„è·ç¦»ï¼Œ2è¡¨ç¤ºå‚ç›´äºæŒ‰é”®æ–¹å‘ä¸Šçš„è·ç¦»
     for (int i = 0; i < childs_.size(); i++)
     {
         if (i == i0 || childs_[i]->visible_ == false)
@@ -154,19 +138,19 @@ int RunNode::findNextVisibleChild(int i0, Direct direct)
         int dis1, dis2;
         switch (direct)
         {
-        case Left:
+        case DirectLeft:
             dis1 = current->x_ - c->x_;
             dis2 = abs(c->y_ - current->y_);
             break;
-        case Up:
+        case DirectUp:
             dis1 = current->y_ - c->y_;
             dis2 = abs(c->x_ - current->x_);
             break;
-        case Right:
+        case DirectRight:
             dis1 = c->x_ - current->x_;
             dis2 = abs(c->y_ - current->y_);
             break;
-        case Down:
+        case DirectDown:
             dis1 = c->y_ - current->y_;
             dis2 = abs(c->x_ - current->x_);
             break;
@@ -183,7 +167,7 @@ int RunNode::findNextVisibleChild(int i0, Direct direct)
             min2 = (std::min)(min2, dis1 + dis2);
             i1 = i;
         }
-        //ÒÔÉÏÊı×ÖµÄÈ¡·¨£ºÈçÓĞ×ø±êÒ»ÖÂµÄµã£¬²»¿¼ÂÇµÚ¶ş¾àÀë£¨ºÃÏñ²»Ì«Ã÷ÏÔ£¬ÒÔºóÔÙ¸Ä°É£©
+        //ä»¥ä¸Šæ•°å­—çš„å–æ³•ï¼šå¦‚æœ‰åæ ‡ä¸€è‡´çš„ç‚¹ï¼Œä¸è€ƒè™‘ç¬¬äºŒè·ç¦»ï¼ˆå¥½åƒä¸å¤ªæ˜æ˜¾ï¼Œä»¥åå†æ”¹å§ï¼‰
     }
     return i1;
 }
@@ -200,6 +184,29 @@ int RunNode::findFristVisibleChild()
     return -1;
 }
 
+void RunNode::forceActiveChild()
+{
+    for (int i = 0; i < childs_.size(); i++)
+    {
+        childs_[i]->setState(NodeNormal);
+        if (i == active_child_)
+        {
+            childs_[i]->setState(NodePass);
+        }
+    }
+}
+
+//æ£€æµ‹
+void RunNode::checkActiveToResult()
+{
+    result_ = -1;
+    int r = checkChildState();
+    if (r == active_child_)
+    {
+        result_ = active_child_;
+    }
+}
+
 void RunNode::checkFrame()
 {
     if (stay_frame_ > 0 && current_frame_ >= stay_frame_)
@@ -208,15 +215,31 @@ void RunNode::checkFrame()
     }
 }
 
-//´¦Àí×ÔÉíµÄÊÂ¼şÏìÓ¦
-//Ö»´¦Àíµ±Ç°µÄ½ÚµãºÍµ±Ç°½ÚµãµÄ×Ó½Úµã£¬¼ì²âÊó±êÊÇ·ñÔÚ·¶Î§ÄÚ
-//×¢ÒâÈ«ÆÁÀàµÄ½ÚµãÒªÒ»Ö±½ÓÊÜÊÂ¼ş
+//ç”»å‡ºè‡ªèº«å’Œå­èŠ‚ç‚¹
+void RunNode::drawSelfChilds()
+{
+    if (visible_)
+    {
+        draw();
+        for (auto c : childs_)
+        {
+            if (c->visible_)
+            {
+                c->drawSelfChilds();
+            }
+        }
+    }
+}
+
+//å¤„ç†è‡ªèº«çš„äº‹ä»¶å“åº”
+//åªå¤„ç†å½“å‰çš„èŠ‚ç‚¹å’Œå½“å‰èŠ‚ç‚¹çš„å­èŠ‚ç‚¹ï¼Œæ£€æµ‹é¼ æ ‡æ˜¯å¦åœ¨èŒƒå›´å†…
+//æ³¨æ„å…¨å±ç±»çš„èŠ‚ç‚¹è¦ä¸€ç›´æ¥å—äº‹ä»¶
 void RunNode::checkStateSelfChilds(BP_Event& e, bool check_event)
 {
     //if (exit_) { return; }
     if (visible_ || full_window_)
     {
-        //×¢ÒâÕâÀïÊÇ·´Ïò
+        //æ³¨æ„è¿™é‡Œæ˜¯åå‘
         for (int i = childs_.size() - 1; i >= 0; i--)
         {
             childs_[i]->checkStateSelfChilds(e, check_event);
@@ -229,11 +252,11 @@ void RunNode::checkStateSelfChilds(BP_Event& e, bool check_event)
             {
                 active_child_ = r;
             }
-            //¿ÉÒÔÔÚdealEventÖĞ¸Ä±äÔ­ÓĞ×´Ì¬£¬Ç¿ÖÆÉèÖÃÄ³Ğ©Çé¿ö
+            //å¯ä»¥åœ¨dealEventä¸­æ”¹å˜åŸæœ‰çŠ¶æ€ï¼Œå¼ºåˆ¶è®¾ç½®æŸäº›æƒ…å†µ
             if (deal_event_)
             {
                 dealEvent(e);
-                //Îª¼ò»¯´úÂë£¬½«°´ÏÂ»Ø³µºÍESCµÄ²Ù×÷Ğ´ÔÚ´Ë´¦
+                //ä¸ºç®€åŒ–ä»£ç ï¼Œå°†æŒ‰ä¸‹å›è½¦å’ŒESCçš„æ“ä½œå†™åœ¨æ­¤å¤„
                 if (isPressOK(e))
                 {
                     onPressedOK();
@@ -250,7 +273,7 @@ void RunNode::checkStateSelfChilds(BP_Event& e, bool check_event)
     }
     else
     {
-        state_ = Normal;
+        state_ = NodeNormal;
     }
 }
 
@@ -263,33 +286,57 @@ void RunNode::backRunSelfChilds()
     backRun();
 }
 
-//¼ì²âÊÂ¼ş
+//æ£€æµ‹äº‹ä»¶
 void RunNode::dealEventSelfChilds(bool check_event)
 {
     if (check_event)
     {
         BP_Event e;
         e.type = BP_FIRSTEVENT;
-        //´Ë´¦ÕâÑùÉè¼ÆµÄÔ­ÒòÊÇÄ³Ğ©ÏµÍ³ÏÂ»áÁ¬ĞøÉú³ÉÒ»´ó´®ÊÂ¼ş£¬Èç¹ûÃ¿¸öÑ­»·½ö´¦ÀíÒ»¸ö»áÔì³ÉÏìÓ¦Âı
-        while (Engine::pollEvent(e))
+        //æ­¤å¤„è¿™æ ·è®¾è®¡çš„åŸå› æ˜¯æŸäº›ç³»ç»Ÿä¸‹ä¼šè¿ç»­ç”Ÿæˆä¸€å¤§ä¸²äº‹ä»¶ï¼Œå¦‚æœæ¯ä¸ªå¾ªç¯ä»…å¤„ç†ä¸€ä¸ªä¼šé€ æˆå“åº”æ…¢
+        while (Engine::getInstance()->pollEvent(e))
         {
             if (isSpecialEvent(e))
             {
                 break;
             }
         }
-        //if (e.type == BP_MOUSEBUTTONUP)
-        //{
-        //    printf("BP_MOUSEBUTTONUP\n");
-        //}
-        checkStateSelfChilds(e, check_event);
-        switch (e.type)
+        if (e.type == BP_CONTROLLERAXISMOTION)
         {
-        case BP_QUIT:
+            BP_Event e1;
+            while (Engine::getInstance()->pollEvent(e1));
+            if (e.caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX || e.caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
+            {
+                auto axis_x = Engine::getInstance()->gameControllerGetAxis(BP_CONTROLLER_AXIS_RIGHTX);
+                auto axis_y = Engine::getInstance()->gameControllerGetAxis(BP_CONTROLLER_AXIS_RIGHTY);
+
+                int x, y;
+                Engine::getInstance()->getMouseStateInStartWindow(x, y);
+                //fmt1::print("{} {}  ", axis_x, axis_y);
+                if (abs(axis_x) < 5000) { axis_x = 0; }
+                if (abs(axis_y) < 5000) { axis_y = 0; }
+                if (axis_x != 0 || axis_y != 0)
+                {
+                    x += axis_x / 500;
+                    y += axis_y / 500;
+                    int w, h;
+                    Engine::getInstance()->getWindowSize(w, h);
+                    if (x >= w) { x = w - 1; }
+                    if (x < 0) { x = 0; }
+                    if (y >= h) { y = h - 1; }
+                    if (y < 0) { y = 0; }
+                    Engine::getInstance()->setMouseState(x, y);
+                    e.type = BP_MOUSEMOTION;
+                    e.motion.x = x;
+                    e.motion.y = y;
+                }
+            }
+        }
+        checkStateSelfChilds(e, check_event);
+        if (e.type == BP_QUIT
+            || (e.type == BP_WINDOWEVENT && e.window.event == BP_WINDOWEVENT_CLOSE))
+        {
             UISystem::askExit(1);
-            break;
-        default:
-            break;
         }
     }
     else
@@ -298,47 +345,32 @@ void RunNode::dealEventSelfChilds(bool check_event)
     }
 }
 
-//ÊÇ·ñÎªÓÎÏ·ĞèÒª´¦ÀíµÄÀàĞÍ£¬±ÜÃâ¶ªÊ§Ò»Ğ©²Ù×÷
+//æ˜¯å¦ä¸ºæ¸¸æˆéœ€è¦å¤„ç†çš„ç±»å‹ï¼Œé¿å…ä¸¢å¤±ä¸€äº›æ“ä½œ
 bool RunNode::isSpecialEvent(BP_Event& e)
 {
-    return e.type == BP_MOUSEBUTTONDOWN
-        || e.type == BP_MOUSEBUTTONUP
+    //fmt1::print("type = {}\n", e.type);
+    return  e.type == BP_QUIT
+        || e.type == BP_WINDOWEVENT
         || e.type == BP_KEYDOWN
         || e.type == BP_KEYUP
+        || e.type == BP_TEXTEDITING
         || e.type == BP_TEXTINPUT
-        || e.type == BP_TEXTEDITING;
+        || e.type == BP_MOUSEMOTION
+        || e.type == BP_MOUSEBUTTONDOWN
+        || e.type == BP_MOUSEBUTTONUP
+        || e.type == BP_MOUSEWHEEL
+        || e.type == BP_CONTROLLERAXISMOTION
+        || e.type == BP_CONTROLLERBUTTONDOWN
+        || e.type == BP_CONTROLLERBUTTONUP;
 }
 
-void RunNode::forceActiveChild()
-{
-    for (int i = 0; i < childs_.size(); i++)
-    {
-        childs_[i]->setState(Normal);
-        if (i == active_child_)
-        {
-            childs_[i]->setState(Pass);
-        }
-    }
-}
-
-//¼ì²â
-void RunNode::checkActiveToResult()
-{
-    result_ = -1;
-    int r = checkChildState();
-    if (r == active_child_)
-    {
-        result_ = active_child_;
-    }
-}
-
-//»ñÈ¡×Ó½ÚµãµÄ×´Ì¬
+//è·å–å­èŠ‚ç‚¹çš„çŠ¶æ€
 int RunNode::checkChildState()
 {
     int r = -1;
     for (int i = 0; i < getChildCount(); i++)
     {
-        if (getChild(i)->getState() != Normal)
+        if (getChild(i)->getState() != NodeNormal)
         {
             r = i;
         }
@@ -348,66 +380,77 @@ int RunNode::checkChildState()
 
 void RunNode::checkSelfState(BP_Event& e)
 {
-    //¼ì²âÊó±ê¾­¹ı£¬°´ÏÂµÈ×´Ì¬
-    //×¢ÒâBP_MOUSEMOTIONÔÚmacÏÂÃæÓĞĞ©ÎÊÌâ£¬´ı²é
+    //æ£€æµ‹é¼ æ ‡ç»è¿‡ï¼ŒæŒ‰ä¸‹ç­‰çŠ¶æ€
+    //BP_MOUSEMOTIONä¼¼ä¹æœ‰äº›é—®é¢˜ï¼Œå¾…æŸ¥
+    //fmt1::print("{} ", e.type);
     if (e.type == BP_MOUSEMOTION)
     {
         if (inSide(e.motion.x, e.motion.y))
         {
-            state_ = Pass;
+            state_ = NodePass;
         }
         else
         {
-            state_ = Normal;
+            state_ = NodeNormal;
         }
     }
     if ((e.type == BP_MOUSEBUTTONDOWN || e.type == BP_MOUSEBUTTONUP) && e.button.button == BP_BUTTON_LEFT)
     {
         if (inSide(e.button.x, e.button.y))
         {
-            state_ = Press;
+            state_ = NodePress;
         }
         else
         {
-            state_ = Normal;
+            state_ = NodeNormal;
         }
     }
     if ((e.type == BP_KEYDOWN || e.type == BP_KEYUP) && (e.key.keysym.sym == BPK_RETURN || e.key.keysym.sym == BPK_SPACE))
     {
-        //°´ÏÂ¼üÅÌµÄ¿Õ¸ñ»òÕß»Ø³µÊ±£¬½«passµÄ°´¼ü¸ÄÎªpress
-        if (state_ == Pass)
+        //æŒ‰ä¸‹é”®ç›˜çš„ç©ºæ ¼æˆ–è€…å›è½¦æ—¶ï¼Œå°†passçš„æŒ‰é”®æ”¹ä¸ºpress
+        if (state_ == NodePass)
         {
-            state_ = Press;
+            state_ = NodePress;
+        }
+    }
+    if ((e.type == BP_CONTROLLERBUTTONDOWN || e.type == BP_CONTROLLERBUTTONUP) && e.cbutton.button == BP_CONTROLLER_BUTTON_A)
+    {
+        //int x, y;
+        //Engine::getInstance()->getMouseState(x, y);
+        if (state_ == NodePass)
+        {
+            state_ = NodePress;
         }
     }
 }
 
 void RunNode::present()
 {
-    int t = Engine::getTicks() - prev_present_ticks_;
-
+    auto t = Engine::getTicks() - global_prev_present_ticks_;
+    auto e = Engine::getInstance();
     if (render_message_)
-    {
-        auto e = Engine::getInstance();
-        Font::getInstance()->draw("Render one frame in " + std::to_string(t) + " ms", 20, e->getWindowWidth() - 300, e->getWindowHeight() - 60);
-        Font::getInstance()->draw("RenderCopy time is " + std::to_string(Engine::getInstance()->getRenderTimes()), 20, e->getWindowWidth() - 300, e->getWindowHeight() - 35);
+    {        
+        Font::getInstance()->draw(fmt1::format("Render one frame in {:.3f} ms", t), 20, e->getWindowWidth() - 300, e->getWindowHeight() - 60);
+        Font::getInstance()->draw(fmt1::format("RenderCopy time is {}", Engine::getInstance()->getRenderTimes()), 20, e->getWindowWidth() - 300, e->getWindowHeight() - 35);
         e->resetRenderTimes();
     }
-    Engine::getInstance()->renderPresent();
-    int t_delay = refresh_interval_ - t;
+    e->renderMainTextureToWindow();
+    e->renderPresent();
+    e->setRenderMainTexture();
+    auto t_delay = refresh_interval_ - t;
     if (t_delay > refresh_interval_)
     {
         t_delay = refresh_interval_;
     }
-    //printf("%d/%d ", t_delay, prev_present_ticks_);
+    //fmt1::print("{}/{}/{} ", t, t_delay, global_prev_present_ticks_);
     if (t_delay > 0)
     {
         Engine::delay(t_delay);
     }
-    prev_present_ticks_ = Engine::getTicks();
+    global_prev_present_ticks_ = Engine::getTicks();
 }
 
-//ÔËĞĞ±¾½Úµã£¬²ÎÊıÎªÊÇ·ñÔÚrootÖĞÔËĞĞ£¬ÎªÕæÔò²ÎÓë»æÖÆ£¬Îª¼ÙÔò²»»á±»»­³ö
+//è¿è¡Œæœ¬èŠ‚ç‚¹ï¼Œå‚æ•°ä¸ºæ˜¯å¦åœ¨rootä¸­è¿è¡Œï¼Œä¸ºçœŸåˆ™å‚ä¸ç»˜åˆ¶ï¼Œä¸ºå‡åˆ™ä¸ä¼šè¢«ç”»å‡º
 int RunNode::run(bool in_root /*= true*/)
 {
     exit_ = false;
@@ -455,8 +498,8 @@ void RunNode::exitAll(int begin)
     }
 }
 
-//×¨ÃÅÓÃÀ´Ä³Ğ©Çé¿öÏÂ¶¯»­µÄÏÔÊ¾ºÍÑÓÊ±
-//ÖĞ¼ä¿ÉÒÔ²åÈëÒ»¸öº¯Êı²¹³äĞ©Ê²Ã´£¬Ïë²»µ½¸üºÃµÄ·½·¨ÁË
+//ä¸“é—¨ç”¨æ¥æŸäº›æƒ…å†µä¸‹åŠ¨ç”»çš„æ˜¾ç¤ºå’Œå»¶æ—¶
+//ä¸­é—´å¯ä»¥æ’å…¥ä¸€ä¸ªå‡½æ•°è¡¥å……äº›ä»€ä¹ˆï¼Œæƒ³ä¸åˆ°æ›´å¥½çš„æ–¹æ³•äº†
 int RunNode::drawAndPresent(int times, std::function<void(void*)> func, void* data)
 {
     if (times < 1)

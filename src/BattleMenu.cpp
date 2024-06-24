@@ -1,14 +1,15 @@
 #include "BattleMenu.h"
 #include "BattleScene.h"
 #include "Event.h"
+#include "Font.h"
 #include "PotConv.h"
 #include "Random.h"
 #include "Save.h"
-#include "convert.h"
+#include "strfunc.h"
 
 BattleActionMenu::BattleActionMenu(BattleScene* b)
 {
-    setStrings({ "ÒÆ„Ó", "ÎäŒW", "ÓÃ¶¾", "½â¶¾", "át¯Ÿ", "°µÆ÷", "ËÆ·", "µÈ´ı", " î‘B", "×Ô„Ó", "½YÊø" });
+    setStrings({ "ç§»å‹•", "æ­¦å­¸", "ç”¨æ¯’", "è§£æ¯’", "é†«ç™‚", "æš—å™¨", "è—¥å“", "ç­‰å¾…", "ç‹€æ…‹", "è‡ªå‹•", "çµæŸ" });
     distance_layer_.resize(BATTLEMAP_COORD_COUNT);
     battle_scene_ = b;
 }
@@ -24,42 +25,42 @@ void BattleActionMenu::setRole(Role* r)
     for (auto c : childs_)
     {
         c->setVisible(true);
-        c->setState(Normal);
+        c->setState(NodeNormal);
     }
 
-    //ÒÆ¶¯¹ıÔò²»¿ÉÒÆ¶¯
+    //ç§»åŠ¨è¿‡åˆ™ä¸å¯ç§»åŠ¨
     if (role_->Moved || role_->PhysicalPower < 10)
     {
-        childs_text_["ÒÆ„Ó"]->setVisible(false);
+        childs_text_["ç§»å‹•"]->setVisible(false);
     }
     if (role_->getLearnedMagicCount() <= 0 || role_->PhysicalPower < 20)
     {
-        childs_text_["ÎäŒW"]->setVisible(false);
+        childs_text_["æ­¦å­¸"]->setVisible(false);
     }
     if (role_->UsePoison <= 0 || role_->PhysicalPower < 30)
     {
-        childs_text_["ÓÃ¶¾"]->setVisible(false);
+        childs_text_["ç”¨æ¯’"]->setVisible(false);
     }
     if (role_->Detoxification <= 0 || role_->PhysicalPower < 30)
     {
-        childs_text_["½â¶¾"]->setVisible(false);
+        childs_text_["è§£æ¯’"]->setVisible(false);
     }
     if (role_->Medicine <= 0 || role_->PhysicalPower < 10)
     {
-        childs_text_["át¯Ÿ"]->setVisible(false);
+        childs_text_["é†«ç™‚"]->setVisible(false);
     }
     if (role_->HiddenWeapon <= 15 || role_->PhysicalPower < 10)
     {
-        childs_text_["°µÆ÷"]->setVisible(false);
+        childs_text_["æš—å™¨"]->setVisible(false);
     }
 
     if (role_->Competing)
     {
-        childs_text_["ËÆ·"]->setVisible(false);
-        childs_text_["°µÆ÷"]->setVisible(false);
+        childs_text_["è—¥å“"]->setVisible(false);
+        childs_text_["æš—å™¨"]->setVisible(false);
     }
 
-    childs_text_["µÈ´ı"]->setVisible(false);    //½ûÓÃµÈ´ı
+    childs_text_["ç­‰å¾…"]->setVisible(false);    //ç¦ç”¨ç­‰å¾…
 
     setFontSize(20);
     arrange(0, 0, 0, 28);
@@ -71,7 +72,7 @@ void BattleActionMenu::setRole(Role* r)
     if (!role_->Moved)
     {
         role_->AI_Action = -1;
-    }    //ÉèÖÃÎªÎ´¼ÆËã¹ıaiµÄĞĞ¶¯
+    }    //è®¾ç½®ä¸ºæœªè®¡ç®—è¿‡aiçš„è¡ŒåŠ¨
 }
 
 void BattleActionMenu::dealEvent(BP_Event& e)
@@ -80,21 +81,21 @@ void BattleActionMenu::dealEvent(BP_Event& e)
     {
         return;
     }
-    //Èç¹ûÊÇai£¬¼ÆËãĞĞ¶¯£¬²»ÔÙ½øÈëÆäËûÑ­»·
+    //å¦‚æœæ˜¯aiï¼Œè®¡ç®—è¡ŒåŠ¨ï¼Œä¸å†è¿›å…¥å…¶ä»–å¾ªç¯
     if (role_->isAuto())
     {
         int act = autoSelect(role_);
         setResult(act);
-        setAllChildState(Normal);
-        childs_[act]->setState(Press);
+        setAllChildState(NodeNormal);
+        childs_[act]->setState(NodePress);
         setExit(true);
-        setVisible(false);    //AI²»»­²Ëµ¥ÁË£¬Ì«ÂÒ
+        setVisible(false);    //AIä¸ç”»èœå•äº†ï¼Œå¤ªä¹±
         return;
     }
     Menu::dealEvent(e);
 }
 
-//"0ÒÆ„Ó", "1ÎäŒW", "2ÓÃ¶¾", "3½â¶¾", "4át¯Ÿ", "5°µÆ÷", "6ËÆ·", "7µÈ´ı", "8 î‘B", "9×Ô„Ó", "10½YÊø"
+//"0ç§»å‹•", "1æ­¦å­¸", "2ç”¨æ¯’", "3è§£æ¯’", "4é†«ç™‚", "5æš—å™¨", "6è—¥å“", "7ç­‰å¾…", "8ç‹€æ…‹", "9è‡ªå‹•", "10çµæŸ"
 int BattleActionMenu::autoSelect(Role* role)
 {
     std::vector<Role*> friends, enemies;
@@ -110,20 +111,20 @@ int BattleActionMenu::autoSelect(Role* role)
         }
     }
 
-    //aiÎªÃ¿ÖÖĞĞ¶¯ÆÀ·Ö
+    //aiä¸ºæ¯ç§è¡ŒåŠ¨è¯„åˆ†
     std::vector<AIAction> ai_action;
 
-    Random<double> rand;    //Ã·É­Ğı×ª·¨Ëæ»úÊı
+    Random<double> rand;    //æ¢…æ£®æ—‹è½¬æ³•éšæœºæ•°
     rand.set_seed();
     rand.set_parameter(0, 1);
 
     if (role->AI_Action == -1)
     {
         auto _role_temp = *role;
-        auto role_temp = &_role_temp;    //ÁÙÊ±ÈËÎïÖ¸Õë£¬ÓÃÓÚÒ»Ğ©º¬ÓĞ¾àÀëË¥¼õµÄ¼ÆËã
+        auto role_temp = &_role_temp;    //ä¸´æ—¶äººç‰©æŒ‡é’ˆï¼Œç”¨äºä¸€äº›å«æœ‰è·ç¦»è¡°å‡çš„è®¡ç®—
 
-        //¿ªÊ¼¼ÆËã±¾ÂÖµÄ²ßÂÔ
-        role->AI_Action = getResultFromString("½YÊø");
+        //å¼€å§‹è®¡ç®—æœ¬è½®çš„ç­–ç•¥
+        role->AI_Action = getResultFromString("çµæŸ");
         role->AI_MoveX = role->X();
         role->AI_MoveY = role->Y();
         role->AI_ActionX = role->X();
@@ -131,14 +132,14 @@ int BattleActionMenu::autoSelect(Role* role)
         role->AI_Magic = nullptr;
         role->AI_Item = nullptr;
 
-        //ÈôÓĞÒ»·½Îª¿Õ£¬Ã»ÓĞÕ½¶·ÏÂÈ¥µÄÒâÒå
+        //è‹¥æœ‰ä¸€æ–¹ä¸ºç©ºï¼Œæ²¡æœ‰æˆ˜æ–—ä¸‹å»çš„æ„ä¹‰
         if (!friends.empty() && !enemies.empty())
         {
-            //¼ÆËã¿ÉÒÔÒÆ¶¯µÄÎ»ÖÃ
+            //è®¡ç®—å¯ä»¥ç§»åŠ¨çš„ä½ç½®
             battle_scene_->calSelectLayer(role, 0, battle_scene_->calMoveStep(role));
 
-            //¿¼ÂÇ³ÔÒ©
-            std::string action_text = "ËÆ·";
+            //è€ƒè™‘åƒè¯
+            std::string action_text = "è—¥å“";
             if (childs_text_[action_text]->getVisible() && (role->HP < 0.2 * role->MaxHP || role->MP < 0.2 * role->MaxMP || role_->PhysicalPower < 0.2 * Save::getInstance()->MaxPhysicalPower))
             {
                 AIAction aa;
@@ -146,7 +147,7 @@ int BattleActionMenu::autoSelect(Role* role)
                 auto items = BattleItemMenu::getAvaliableItems(role, 2);
                 for (auto item : items)
                 {
-                    //·ÖÊı¼ÆËã£¬ºóÃæµÄ²îÊÇ¾¡Á¿³Ô¸Õ¸ÕºÃµÄÒ©
+                    //åˆ†æ•°è®¡ç®—ï¼Œåé¢çš„å·®æ˜¯å°½é‡åƒåˆšåˆšå¥½çš„è¯
                     aa.point = 0;
                     if (item->AddHP > 0)
                     {
@@ -164,18 +165,18 @@ int BattleActionMenu::autoSelect(Role* role)
                     if (aa.point > 0)
                     {
                         aa.item = item;
-                        aa.point *= 1.5;    //×Ô±£µÄÏµÊıÂÔ´ó
+                        aa.point *= 1.5;    //è‡ªä¿çš„ç³»æ•°ç•¥å¤§
                         getFarthestToAll(role, enemies, aa.MoveX, aa.MoveY);
                         ai_action.push_back(aa);
                     }
                 }
             }
 
-            //½â¶¾£¬Ò½ÁÆ£¬ÓÃ¶¾µÄĞĞÎªÓëµÀµÂÏà¹Ø
+            //è§£æ¯’ï¼ŒåŒ»ç–—ï¼Œç”¨æ¯’çš„è¡Œä¸ºä¸é“å¾·ç›¸å…³
             if (role->Morality > 50)
             {
-                action_text = "½â¶¾";
-                //»á½â¶¾µÄ£¬¼ì²é¶ÓÓÑÖĞÓĞÎŞÖĞ¶¾½ÏÉîÕß£¬½Ó½ü²¢½â¶¾
+                action_text = "è§£æ¯’";
+                //ä¼šè§£æ¯’çš„ï¼Œæ£€æŸ¥é˜Ÿå‹ä¸­æœ‰æ— ä¸­æ¯’è¾ƒæ·±è€…ï¼Œæ¥è¿‘å¹¶è§£æ¯’
                 if (childs_text_[action_text]->getVisible())
                 {
                     for (auto r2 : friends)
@@ -183,11 +184,11 @@ int BattleActionMenu::autoSelect(Role* role)
                         if (r2->Poison > 50)
                         {
                             AIAction aa;
-                            calAIActionNearest(r2, aa);                                             //¼ÆËãÄ¿±ê£¬ºÍÀëÄ¿±ê×î½üµÄµã£¬ÏÂÍ¬
-                            int action_dis = battle_scene_->calActionStep(role->Detoxification);    //¼ÆËã¿ÉÒÔĞĞ¶¯µÄ¾àÀë
-                            if (action_dis >= calNeedActionDistance(aa))                            //ÓëĞèÒªĞĞ¶¯µÄ¾àÀë±È½Ï
+                            calAIActionNearest(r2, aa);                                             //è®¡ç®—ç›®æ ‡ï¼Œå’Œç¦»ç›®æ ‡æœ€è¿‘çš„ç‚¹ï¼Œä¸‹åŒ
+                            int action_dis = battle_scene_->calActionStep(role->Detoxification);    //è®¡ç®—å¯ä»¥è¡ŒåŠ¨çš„è·ç¦»
+                            if (action_dis >= calNeedActionDistance(aa))                            //ä¸éœ€è¦è¡ŒåŠ¨çš„è·ç¦»æ¯”è¾ƒ
                             {
-                                //ÈôÔÚ¾àÀëÖ®ÄÚÔò¿¼ÂÇÊ¹ÓÃ£¬ÒÔÏÂ¸÷¸ö¶¼ÀàËÆ
+                                //è‹¥åœ¨è·ç¦»ä¹‹å†…åˆ™è€ƒè™‘ä½¿ç”¨ï¼Œä»¥ä¸‹å„ä¸ªéƒ½ç±»ä¼¼
                                 aa.Action = getResultFromString(action_text);
                                 aa.point = r2->Poison;
                                 ai_action.push_back(aa);
@@ -195,7 +196,7 @@ int BattleActionMenu::autoSelect(Role* role)
                         }
                     }
                 }
-                action_text = "át¯Ÿ";
+                action_text = "é†«ç™‚";
                 if (childs_text_[action_text]->getVisible())
                 {
                     for (auto r2 : friends)
@@ -217,8 +218,8 @@ int BattleActionMenu::autoSelect(Role* role)
             }
             else
             {
-                //¿¼ÂÇÓÃ¶¾
-                action_text = "ÓÃ¶¾";
+                //è€ƒè™‘ç”¨æ¯’
+                action_text = "ç”¨æ¯’";
                 if (childs_text_[action_text]->getVisible())
                 {
                     auto r2 = getNearestRole(role, enemies);
@@ -238,13 +239,13 @@ int BattleActionMenu::autoSelect(Role* role)
                 }
             }
 
-            //Ê¹ÓÃ°µÆ÷
-            action_text = "°µÆ÷";
+            //ä½¿ç”¨æš—å™¨
+            action_text = "æš—å™¨";
             if (childs_text_[action_text]->getVisible())
             {
                 auto r2 = getNearestRole(role, enemies);
                 AIAction aa;
-                calAIActionNearest(r2, aa, role_temp);    //ÁÙÊ±ÈËÎïÖ¸ÕëÓÃÀ´¼ÆËãÉËº¦£¬ÒòÎªº¬ÓĞ¾àÀëË¥¼õ£¬ÎäÑ§Í¬
+                calAIActionNearest(r2, aa, role_temp);    //ä¸´æ—¶äººç‰©æŒ‡é’ˆç”¨æ¥è®¡ç®—ä¼¤å®³ï¼Œå› ä¸ºå«æœ‰è·ç¦»è¡°å‡ï¼Œæ­¦å­¦åŒ
                 int action_dis = battle_scene_->calActionStep(role->HiddenWeapon);
                 if (action_dis >= calNeedActionDistance(aa))
                 {
@@ -257,22 +258,22 @@ int BattleActionMenu::autoSelect(Role* role)
                         {
                             aa.point = r2->HP * 1.25;
                         }
-                        aa.point *= 0.5;    //°µÆ÷·ÖÖµÂÔµÍ
+                        aa.point *= 0.5;    //æš—å™¨åˆ†å€¼ç•¥ä½
                         aa.item = item;
                         ai_action.push_back(aa);
                     }
                 }
             }
 
-            //Ê¹ÓÃÎäÑ§
-            action_text = "ÎäŒW";
+            //ä½¿ç”¨æ­¦å­¦
+            action_text = "æ­¦å­¸";
             if (childs_text_[action_text]->getVisible())
             {
                 AIAction aa;
                 aa.Action = getResultFromString(action_text);
                 auto r2 = getNearestRole(role, enemies);
                 calAIActionNearest(r2, aa, role_temp);
-                //±éÀúÎäÑ§
+                //éå†æ­¦å­¦
                 for (int i = 0; i < ROLE_MAGIC_COUNT; i++)
                 {
                     int max_hurt = -1;
@@ -284,7 +285,7 @@ int BattleActionMenu::autoSelect(Role* role)
                     int level_index = role->getRoleMagicLevelIndex(i);
 
                     battle_scene_->calSelectLayerByMagic(aa.MoveX, aa.MoveY, role->Team, magic, level_index);
-                    //¶ÔËùÓĞÄÜÑ¡µ½µÄµã²âÊÔ£¬¹ÀËãÊÕÒæ
+                    //å¯¹æ‰€æœ‰èƒ½é€‰åˆ°çš„ç‚¹æµ‹è¯•ï¼Œä¼°ç®—æ”¶ç›Š
                     for (int ix = 0; ix < BATTLEMAP_COORD_COUNT; ix++)
                     {
                         for (int iy = 0; iy < BATTLEMAP_COORD_COUNT; iy++)
@@ -303,7 +304,7 @@ int BattleActionMenu::autoSelect(Role* role)
                                 }
                                 if (total_hurt > -1)
                                 {
-                                    //printf("AI %s %s (%d, %d): %d\n", PotConv::to_read(role->Name).c_str(), PotConv::to_read(magic->Name).c_str(), ix, iy, total_hurt);
+                                    //fmt1::print("AI {} {} ({}, {}): {}\n", role->Name, PotConv::to_read(magic->Name).c_str(), ix, iy, total_hurt);
                                 }
                             }
                         }
@@ -314,19 +315,19 @@ int BattleActionMenu::autoSelect(Role* role)
                 }
             }
         }
-        //²éÕÒ×î´óÆÀ·ÖµÄĞĞ¶¯
+        //æŸ¥æ‰¾æœ€å¤§è¯„åˆ†çš„è¡ŒåŠ¨
         double max_point = -1;
         for (auto aa : ai_action)
         {
-            printf("AI %s: %s ", PotConv::to_read(role->Name).c_str(), PotConv::to_read(getStringFromResult(aa.Action)).c_str());
-            if (aa.item) { printf("%s ", PotConv::to_read(aa.item->Name).c_str()); }
-            if (aa.magic) { printf("%s ", PotConv::to_read(aa.magic->Name).c_str()); }
-            double r = rand.rand() * 10;    //ÓÃÓÚÍ¬·ÖµÄÇé¿ö£¬¿ÉÒÔËæ»úÑ¡Ôñ
-            printf("score %.2f(%.2f)\n", aa.point, r);
-            //ÈôÆÀ·Ö½öÓĞÒ»¸öËæ»úÊıµÄÖµ£¬ËµÃ÷²»ÔÚ·¶Î§ÄÚ£¬½öÒÆ¶¯²¢½áÊø
+            fmt1::print("AI {}: {} ", role->Name, getStringFromResult(aa.Action));
+            if (aa.item) { fmt1::print("{} ", aa.item->Name); }
+            if (aa.magic) { fmt1::print("{} ", aa.magic->Name); }
+            double r = rand.rand() * 10;    //ç”¨äºåŒåˆ†çš„æƒ…å†µï¼Œå¯ä»¥éšæœºé€‰æ‹©
+            fmt1::print("score {:.2f}({:.2f})\n", aa.point, r);
+            //è‹¥è¯„åˆ†ä»…æœ‰ä¸€ä¸ªéšæœºæ•°çš„å€¼ï¼Œè¯´æ˜ä¸åœ¨èŒƒå›´å†…ï¼Œä»…ç§»åŠ¨å¹¶ç»“æŸ
             if (aa.point == 0)
             {
-                aa.Action = getResultFromString("½YÊø");
+                aa.Action = getResultFromString("çµæŸ");
             }
             double p = aa.point + r;
             if (p > max_point)
@@ -339,8 +340,8 @@ int BattleActionMenu::autoSelect(Role* role)
 
     if (!role->Moved)
     {
-        //Î´ÒÆ¶¯Ôò·µ»ØÒÆ¶¯
-        return getResultFromString("ÒÆ„Ó");
+        //æœªç§»åŠ¨åˆ™è¿”å›ç§»åŠ¨
+        return getResultFromString("ç§»å‹•");
     }
     else
     {
@@ -348,51 +349,18 @@ int BattleActionMenu::autoSelect(Role* role)
     }
 }
 
-//¼ÆËã¾àÀë
-void BattleActionMenu::calDistanceLayer(int x, int y, int max_step /*=64*/)
+//è®¡ç®—è·ç¦»
+void BattleActionMenu::calDistanceLayer(int x, int y, int max_step)
 {
-    distance_layer_.setAll(max_step + 1);
-    std::vector<Point> cal_stack;
-    distance_layer_.data(x, y) = 0;
-    cal_stack.push_back({ x, y });
-    int count = 0;
-    int step = 0;
-    while (step <= 64)
-    {
-        std::vector<Point> cal_stack_next;
-        auto check_next = [&](Point p1) -> void
-        {
-            //Î´¼ÆËã¹ıÇÒ¿ÉÒÔ×ßµÄ¸ñ×Ó²ÎÓëÏÂÒ»²½µÄ¼ÆËã
-            if (distance_layer_.data(p1.x, p1.y) == max_step + 1 && battle_scene_->canWalk(p1.x, p1.y))
-            {
-                distance_layer_.data(p1.x, p1.y) = step + 1;
-                cal_stack_next.push_back(p1);
-                count++;
-            }
-        };
-        for (auto p : cal_stack)
-        {
-            distance_layer_.data(p.x, p.y) = step;
-            check_next({ p.x - 1, p.y });
-            check_next({ p.x + 1, p.y });
-            check_next({ p.x, p.y - 1 });
-            check_next({ p.x, p.y + 1 });
-            if (count >= distance_layer_.squareSize())
-            {
-                break;
-            }    //×î¶à¼ÆËã´ÎÊı£¬±ÜÃâËÀµô
-        }
-        if (cal_stack_next.size() == 0) { break; }    //ÎŞĞÂµÄµã£¬½áÊø
-        cal_stack = cal_stack_next;
-        step++;
-    }
+    battle_scene_->calDistanceLayer(x, y, distance_layer_, max_step);
 }
+
 
 void BattleActionMenu::getFarthestToAll(Role* role, std::vector<Role*> roles, int& x, int& y)
 {
-    Random<double> rand;    //Ã·É­Ğı×ª·¨Ëæ»úÊı
+    Random<double> rand;    //æ¢…æ£®æ—‹è½¬æ³•éšæœºæ•°
     rand.set_seed();
-    //Ñ¡ÔñÀëËùÓĞµĞ·½¾àÀëºÍ×î´óµÄµã
+    //é€‰æ‹©ç¦»æ‰€æœ‰æ•Œæ–¹è·ç¦»å’Œæœ€å¤§çš„ç‚¹
     double max_dis = 0;
     for (int ix = 0; ix < BATTLEMAP_COORD_COUNT; ix++)
     {
@@ -418,7 +386,7 @@ void BattleActionMenu::getFarthestToAll(Role* role, std::vector<Role*> roles, in
 
 void BattleActionMenu::getNearestPosition(int x0, int y0, int& x, int& y)
 {
-    Random<double> rand;    //Ã·É­Ğı×ª·¨Ëæ»úÊı
+    Random<double> rand;    //æ¢…æ£®æ—‹è½¬æ³•éšæœºæ•°
     rand.set_seed();
     calDistanceLayer(x0, y0);
     double min_dis = BATTLEMAP_COORD_COUNT * BATTLEMAP_COORD_COUNT;
@@ -444,7 +412,7 @@ Role* BattleActionMenu::getNearestRole(Role* role, std::vector<Role*> roles)
 {
     int min_dis = 4096;
     Role* r2 = nullptr;
-    //Ñ¡ÔñÀëµÃ×î½üµÄµĞÈË
+    //é€‰æ‹©ç¦»å¾—æœ€è¿‘çš„æ•Œäºº
     for (auto r : roles)
     {
         auto cur_dis = battle_scene_->calRoleDistance(role, r);
@@ -457,7 +425,7 @@ Role* BattleActionMenu::getNearestRole(Role* role, std::vector<Role*> roles)
     return r2;
 }
 
-//ĞèÊÂÏÈ¼ÆËãºÃ¿ÉÒÔÒÆ¶¯µÄ·¶Î§
+//éœ€äº‹å…ˆè®¡ç®—å¥½å¯ä»¥ç§»åŠ¨çš„èŒƒå›´
 void BattleActionMenu::calAIActionNearest(Role* r2, AIAction& aa, Role* r_temp)
 {
     getNearestPosition(r2->X(), r2->Y(), aa.MoveX, aa.MoveY);
@@ -474,24 +442,6 @@ int BattleActionMenu::calNeedActionDistance(AIAction& aa)
     return battle_scene_->calDistance(aa.MoveX, aa.MoveY, aa.ActionX, aa.ActionY);
 }
 
-void BattleMagicMenu::onEntrance()
-{
-    if (role_ == nullptr)
-    {
-        return;
-    }
-    if (role_->isAuto())
-    {
-        magic_ = role_->AI_Magic;
-        setAllChildState(Normal);
-        setResult(0);
-        setExit(true);
-        setVisible(false);
-        return;
-    }
-    forceActiveChild();
-}
-
 void BattleMagicMenu::setRole(Role* r)
 {
     role_ = r;
@@ -504,7 +454,9 @@ void BattleMagicMenu::setRole(Role* r)
         auto m = Save::getInstance()->getRoleLearnedMagic(role_, i);
         if (m)
         {
-            magic_names.push_back(convert::formatString("%-12s%4d  ", m->Name, role_->getRoleShowLearnedMagicLevel(i)));
+            std::string s = m->Name;
+            s += std::string(12 - Font::getTextDrawSize(s), ' ');
+            magic_names.push_back(fmt1::format("{}{}  ", s, role_->getRoleShowLearnedMagicLevel(i)));
         }
         else
         {
@@ -512,9 +464,8 @@ void BattleMagicMenu::setRole(Role* r)
         }
     }
     setStrings(magic_names);
-    setPosition(160, 200);
 
-    //Èç¹û¿í¶ÈÎª0µÄÏîÒş²Ø
+    //å¦‚æœå®½åº¦ä¸º0çš„é¡¹éšè—
     for (auto child : childs_)
     {
         int w, h;
@@ -527,6 +478,24 @@ void BattleMagicMenu::setRole(Role* r)
     arrange(0, 0, 0, 30);
 }
 
+void BattleMagicMenu::onEntrance()
+{
+    if (role_ == nullptr)
+    {
+        return;
+    }
+    //if (role_->isAuto())
+    //{
+    //    magic_ = role_->AI_Magic;
+    //    setAllChildState(NodeNormal);
+    //    setResult(0);
+    //    setExit(true);
+    //    setVisible(false);
+    //    return;
+    //}
+    forceActiveChild();
+}
+
 void BattleMagicMenu::onPressedOK()
 {
     checkActiveToResult();
@@ -537,9 +506,75 @@ void BattleMagicMenu::onPressedOK()
     }
 }
 
+void BattleEquipItemMenu::setRole(Role* r)
+{
+    role_ = r;
+    result_ = -1;
+    item_ = nullptr;
+    setVisible(true);
+
+    std::vector<std::string> item_names;
+    const auto items = Save::getInstance()->getAvailableEquipItems();
+    for (auto& pair : items)
+    {
+        auto item = std::get<0>(pair);
+        const auto count = std::get<1>(pair);
+
+        std::string s = item->Name;
+        s += std::string(12 - Font::getTextDrawSize(s), ' ');
+        item_names.push_back(fmt1::format("{}{}  ", s, count));
+    }
+    setStrings(item_names);
+
+    //å¦‚æœå®½åº¦ä¸º0çš„é¡¹éšè—
+    for (auto child : childs_)
+    {
+        int w, h;
+        child->getSize(w, h);
+        if (w <= 0)
+        {
+            child->setVisible(false);
+        }
+    }
+    arrange(0, 0, 0, 30);
+}
+
+void BattleEquipItemMenu::onEntrance()
+{
+}
+
+void BattleEquipItemMenu::onPressedOK()
+{
+    checkActiveToResult();
+    if (result_ >= 0)
+    {
+        std::vector<int> ids;
+        const auto items = Save::getInstance()->getAvailableEquipItems();
+        item_ = std::get<0>(items[result_]);
+    }
+
+    if (item_)
+    {
+        setExit(true);
+    }
+}
+
+
 BattleItemMenu::BattleItemMenu()
 {
     setSelectUser(false);
+}
+
+void BattleItemMenu::addItem(Item* item, int count)
+{
+    if (role_->Team == 0)
+    {
+        Event::getInstance()->addItemWithoutHint(item->ID, count);
+    }
+    else
+    {
+        Event::getInstance()->roleAddItem(role_->ID, item->ID, count);
+    }
 }
 
 void BattleItemMenu::onEntrance()
@@ -559,21 +594,9 @@ void BattleItemMenu::onEntrance()
     }
 }
 
-void BattleItemMenu::addItem(Item* item, int count)
-{
-    if (role_->Team == 0)
-    {
-        Event::getInstance()->addItemWithoutHint(item->ID, count);
-    }
-    else
-    {
-        Event::getInstance()->roleAddItem(role_->ID, item->ID, count);
-    }
-}
-
 std::vector<Item*> BattleItemMenu::getAvaliableItems()
 {
-    //Ñ¡³öÎïÆ·ÁĞ±í
+    //é€‰å‡ºç‰©å“åˆ—è¡¨
     if (role_->Team == 0)
     {
         geItemsByType(force_item_type_);

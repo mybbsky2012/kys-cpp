@@ -1,7 +1,8 @@
 #include "Event.h"
 #include "Audio.h"
 #include "BattleScene.h"
-#include "File.h"
+#include "BattleSceneHades.h"
+#include "BattleSceneSekiro.h"
 #include "Font.h"
 #include "GameUtil.h"
 #include "GrpIdxFile.h"
@@ -13,7 +14,8 @@
 #include "SubScene.h"
 #include "Talk.h"
 #include "UIShop.h"
-#include "convert.h"
+#include "filefunc.h"
+#include "strfunc.h"
 
 Event::Event()
 {
@@ -24,7 +26,7 @@ Event::Event()
     talk_box_->addChild(talk_box_up_);
     talk_box_->addChild(talk_box_down_, 0, 400);
     menu2_ = std::make_shared<MenuText>();
-    menu2_->setStrings({ "´_ÕJ£¨Y£©", "È¡Ïû£¨N£©" });
+    menu2_->setStrings({ "ç¢ºèªï¼ˆYï¼‰", "å–æ¶ˆï¼ˆNï¼‰" });
     menu2_->setPosition(400, 300);
     menu2_->setFontSize(24);
     menu2_->setHaveBox(true);
@@ -32,6 +34,7 @@ Event::Event()
     text_box_ = std::make_shared<TextBox>();
     text_box_->setPosition(400, 200);
     text_box_->setTextPosition(-20, 100);
+    event_node_ = std::make_shared<DrawNode>();
 }
 
 Event::~Event()
@@ -40,8 +43,8 @@ Event::~Event()
 
 bool Event::loadEventData()
 {
-    //¶ÁÈ¡talk
-    auto talk = GrpIdxFile::getIdxContent("../game/resource/talk.idx", "../game/resource/talk.grp", &offset, &length);
+    //è¯»å–talk
+    auto talk = GrpIdxFile::getIdxContent(GameUtil::PATH() + "resource/talk.idx", GameUtil::PATH() + "resource/talk.grp", &offset, &length);
     for (int i = 0; i < offset.back(); i++)
     {
         if (talk[i])
@@ -51,11 +54,11 @@ bool Event::loadEventData()
     }
     for (int i = 0; i < length.size(); i++)
     {
-        std::string str = convert::replaceAllSubString(PotConv::cp950tocp936(talk.data() + offset[i]), "*", "");
+        std::string str = strfunc::replaceAllSubString(PotConv::cp950toutf8(talk.data() + offset[i]), "*", "");
         talk_contents_.push_back(str);
     }
-    //¶ÁÈ¡ÊÂ¼ş£¬È«²¿×ªÎªÕûĞÍ
-    auto kdef = GrpIdxFile::getIdxContent("../game/resource/kdef.idx", "../game/resource/kdef.grp", &offset, &length);
+    //è¯»å–äº‹ä»¶ï¼Œå…¨éƒ¨è½¬ä¸ºæ•´å‹
+    auto kdef = GrpIdxFile::getIdxContent(GameUtil::PATH() + "resource/kdef.idx", GameUtil::PATH() + "resource/kdef.grp", &offset, &length);
     kdef_.resize(length.size());
     for (int i = 0; i < length.size(); i++)
     {
@@ -66,9 +69,9 @@ bool Event::loadEventData()
         }
     }
 
-    //¶ÁÈ¡Àë¶ÓÁĞ±í
-    std::string leave_txt = convert::readStringFromFile("../game/list/leave.txt");
-    convert::findNumbers(leave_txt, &leave_event_id_);
+    //è¯»å–ç¦»é˜Ÿåˆ—è¡¨
+    std::string leave_txt = filefunc::readFileToString(GameUtil::PATH() + "list/leave.txt");
+    strfunc::findNumbers(leave_txt, &leave_event_id_);
     if (leave_event_id_.size() > 0)
     {
         leave_event_0_ = leave_event_id_[0];
@@ -77,11 +80,15 @@ bool Event::loadEventData()
     return false;
 }
 
-//·µ»ØÖµÎªÊÇ·ñ³É¹¦Ö´ĞĞÊÂ¼ş
+//è¿”å›å€¼ä¸ºæ˜¯å¦æˆåŠŸæ‰§è¡Œäº‹ä»¶
 bool Event::callEvent(int event_id, RunNode* subscene, int supmap_id, int item_id, int event_index, int x, int y)
 {
     bool ret = true;
-    if (event_id <= 0 || event_id >= kdef_.size()) { return false; }
+    if (use_script_ == 0
+        && (event_id <= 0 || event_id >= kdef_.size()))
+    {
+        return false;
+    }
     subscene_ = dynamic_cast<SubScene*>(subscene);
     submap_id_ = -1;
     if (subscene)
@@ -94,36 +101,43 @@ bool Event::callEvent(int event_id, RunNode* subscene, int supmap_id, int item_i
     x_ = x;
     y_ = y;
 
-    //½«½Úµã¼ÓÔØµ½»æÍ¼Õ»µÄ×îÉÏ£¬ÕâÑùÁ½¸ö¶Ô»°¿ÉÒÔ»­³öÀ´
+    //å°†èŠ‚ç‚¹åŠ è½½åˆ°ç»˜å›¾æ ˆçš„æœ€ä¸Š
+    RunNode::addIntoDrawTop(event_node_);
+
     talk_box_->setExit(false);
     talk_box_->setVisible(true);
     RunNode::addIntoDrawTop(talk_box_);
     int p = 0;
     exit_ = false;
     int i = 0;
-    auto e = kdef_[event_id];
 
-    printf("Event %d: ", event_id);
-    for (auto c : e)
-    {
-        printf("%d ", c);
+    //è¿™äº›å®ä»…ä¸ºäº†åœ¨äº‹ä»¶ç¨‹åºä¸­ç®€åŒ–ä»£ç ï¼Œä¸è¦ç”¨åœ¨å…¶ä»–åœ°æ–¹
+#define REGISTER_INSTRUCT(code, function) \
+    { \
+    case (code): \
+        fmt1::print("{} ", #function); \
+        runner(&Event::function, this, e, i); \
+        break; \
     }
-    printf("\n");
-    e.resize(e.size() + 20, -1);    //ºóÃæµÄÊÇ»º³åÇø£¬±ÜÃâ³ö´í
-
-    //ÕâĞ©ºê½öÎªÁËÔÚÊÂ¼ş³ÌĞòÖĞ¼ò»¯´úÂë£¬²»ÒªÓÃÔÚÆäËûµØ·½
-#define REGISTER_INSTRUCT(code, function) { case (code): printf("%s ", #function); runner(&Event::function, this, e, i); break; }
 
     if (use_script_)
     {
-        auto script = convert::formatString("../game/script/oldevent/oldevent_%d.lua", event_id);
+        auto script = fmt1::format(GameUtil::PATH() + "script/event/ka{}.lua", event_id);
+        if (!filefunc::fileExist(script))
+        {
+            script = fmt1::format(GameUtil::PATH() + "script/oldevent/oldevent_{}.lua", event_id);
+        }
+        fmt1::print("Event {}: {}\n ", event_id, script);
         ret = Script::getInstance()->runScript(script) == 0;
     }
     else
     {
+        auto e = kdef_[event_id];
+        fmt1::print("Event {}: {}\n ", event_id, e);
+        e.resize(e.size() + 20, -1);    //åé¢çš„æ˜¯ç¼“å†²åŒºï¼Œé¿å…å‡ºé”™
         while (i < e.size() && !exit_)
         {
-            printf("instruct %d\n", e[i]);
+            fmt1::print("instruct {}\n", e[i]);
             switch (e[i])
             {
                 REGISTER_INSTRUCT(-1, forceExit);
@@ -134,7 +148,7 @@ bool Event::callEvent(int event_id, RunNode* subscene, int supmap_id, int item_i
                 REGISTER_INSTRUCT(4, isUsingItem);
                 REGISTER_INSTRUCT(5, askBattle);
             case 6:
-                printf("%s: %d, %d, %d, %d\n", "tryBattle", e[i + 1], e[i + 2], e[i + 3], e[i + 4]);
+                fmt1::print("{}: {}, {}, {}, {}\n", "tryBattle", e[i + 1], e[i + 2], e[i + 3], e[i + 4]);
                 if (tryBattle(e[i + 1], e[i + 4]))
                 {
                     i += e[i + 2];
@@ -214,7 +228,7 @@ bool Event::callEvent(int event_id, RunNode* subscene, int supmap_id, int item_i
             case 50:
                 if (e[i + 1] > 128)
                 {
-                    printf("%s: ", "checkHave5Item");
+                    fmt1::print("{}\n", "checkHave5Item");
                     if (checkHave5Item(e[i + 1], e[i + 2], e[i + 3], e[i + 4], e[i + 5]))
                     {
                         i += e[i + 6];
@@ -223,7 +237,7 @@ bool Event::callEvent(int event_id, RunNode* subscene, int supmap_id, int item_i
                     {
                         i += e[i + 7];
                     }
-                    i += 2;
+                    i += 8;
                 }
                 else
                 {
@@ -233,17 +247,22 @@ bool Event::callEvent(int event_id, RunNode* subscene, int supmap_id, int item_i
                 break;
 
             default:
-                //²»´æÔÚµÄÖ¸Áî£¬ÒÆ¶¯Ò»¸ñ
+                //ä¸å­˜åœ¨çš„æŒ‡ä»¤ï¼Œç§»åŠ¨ä¸€æ ¼
                 i += 1;
             }
         }
     }
     RunNode::removeFromDraw(talk_box_);
     clearTalkBox();
+
+    RunNode::removeFromDraw(event_node_);
+    event_node_->clear();
+
     if (subscene_)
     {
         subscene_->forceManPic(-1);
     }
+    exit_ = false;
     return ret;
     //if (loop)
     //{ return 0; }
@@ -285,29 +304,39 @@ void Event::forceExit()
 void Event::setUseScript(int u)
 {
     use_script_ = u;
-    if (u)
-    {
-        auto str = convert::readStringFromFile("../game/script/talk.txt");
-        convert::replaceAllSubStringRef(str, "\r", "");
-        convert::replaceAllSubStringRef(str, "*", "");
-        talk_contents_ = convert::splitString(str, "\n");
-    }
+    //if (u)
+    //{
+    //    auto str = strfunc::readStringFromFile(GameUtil::PATH()+"script/talk.txt");
+    //    strfunc::replaceAllSubStringRef(str, "\r", "");
+    //    strfunc::replaceAllSubStringRef(str, "*", "");
+    //    talk_contents_ = strfunc::splitString(str, "\n");
+    //}
 }
 
-//Ô­¶Ô»°Ö¸Áî
+//åŸå¯¹è¯æŒ‡ä»¤
 void Event::oldTalk(int talk_id, int head_id, int style)
 {
     if (talk_id < 0 || talk_id >= talk_contents_.size())
     {
         return;
     }
+    auto talk_content = talk_contents_[talk_id];
+    newTalk(talk_content, head_id, style);
+}
+
+void Event::newTalk(const std::string& talk_content, int head_id, int style)
+{
     auto talk = talk_box_up_;
     if (style % 2 != 0)
     {
         talk = talk_box_down_;
     }
-    talk->setContent(talk_contents_[talk_id]);
-    printf("%s\n", PotConv::to_read(talk_contents_[talk_id]).c_str());
+
+    talk->setContent(talk_content);
+    if (use_script_ == 0)
+    {
+        fmt1::print("head {} style {}: {}\n", head_id, style, talk_content);
+    }
     talk->setHeadID(head_id);
     if (style == 2 || style == 3)
     {
@@ -324,24 +353,24 @@ void Event::oldTalk(int talk_id, int head_id, int style)
     talk->run(false);
 }
 
-//»ñµÃÎïÆ·£¬ÓĞÌáÊ¾
+//è·å¾—ç‰©å“ï¼Œæœ‰æç¤º
 void Event::addItem(int item_id, int count)
 {
     addItemWithoutHint(item_id, count);
-    text_box_->setText(convert::formatString("«@µÃ%s%d", Save::getInstance()->getItem(item_id)->Name, count));
+    text_box_->setText(fmt1::format("ç²å¾—{}{}", Save::getInstance()->getItem(item_id)->Name, count));
     text_box_->setTexture("item", item_id);
     text_box_->run();
     text_box_->setTexture("item", -1);
 }
 
-//ĞŞ¸ÄÊÂ¼ş¶¨Òå
+//ä¿®æ”¹äº‹ä»¶å®šä¹‰
 void Event::modifyEvent(int submap_id, int event_index, int cannotWalk, int index, int event1, int event2, int event3, int currentPic, int endPic, int beginPic, int picDelay, int x, int y)
 {
     if (submap_id < 0) { submap_id = submap_id_; }
     if (submap_id < 0) { return; }
     if (event_index < 0) { event_index = event_index_; }
     auto e = Save::getInstance()->getSubMapInfo(submap_id)->Event(event_index);
-    //ÏÂÃæµÄÖµÎª-2±íÊ¾²»ÒªĞŞ¸Ä
+    //ä¸‹é¢çš„å€¼ä¸º-2è¡¨ç¤ºä¸è¦ä¿®æ”¹
     if (cannotWalk >= -1) { e->CannotWalk = cannotWalk; }
     if (index >= -1) { e->Index = index; }
     if (event1 >= -1) { e->Event1 = event1; }
@@ -356,28 +385,50 @@ void Event::modifyEvent(int submap_id, int event_index, int cannotWalk, int inde
     e->setPosition(x, y, Save::getInstance()->getSubMapInfo(submap_id));
 }
 
-//ÊÇ·ñÊ¹ÓÃÁËÄ³ÎïÆ·
+//æ˜¯å¦ä½¿ç”¨äº†æŸç‰©å“
 bool Event::isUsingItem(int item_id)
 {
     return item_id_ == item_id;
 }
 
-//Ñ¯ÎÊÕ½¶·
+//è¯¢é—®æˆ˜æ–—
 bool Event::askBattle()
 {
-    menu2_->setText("ÊÇ·ñÅcÖ®ß^ÕĞ£¿");
+    menu2_->setText("æ˜¯å¦èˆ‡ä¹‹éæ‹›ï¼Ÿ");
     return menu2_->run() == 0;
 }
 
 bool Event::tryBattle(int battle_id, int get_exp)
 {
-    auto battle = std::make_shared<BattleScene>();
-    battle->setID(battle_id);
-    battle->setHaveFailExp(get_exp);
-    int result = battle->run();
-    //int result = 0;    //²âÊÔÓÃ
+    int result = 0;
+    int battle_mode = GameUtil::getInstance()->getInt("game", "battle_mode");
+    fmt1::print("Battle mode: {}\n", battle_mode);
+    if (battle_mode == 0 || battle_mode == 1)
+    {
+        auto battle = std::make_shared<BattleScene>();
+        battle->setID(battle_id);
+        battle->setHaveFailExp(get_exp);
+        result = battle->run();
+    }
+    else if (battle_mode == 2)
+    {
+        auto battle = std::make_shared<BattleSceneHades>();
+        battle->setID(battle_id);
+        //battle->setHaveFailExp(get_exp);
+        result = battle->run();
+    }
+    else if (battle_mode == 3)
+    {
+        auto battle = std::make_shared<BattleSceneSekiro>();
+        battle->setID(battle_id);
+        //battle->setHaveFailExp(get_exp);
+        result = battle->run();
+    }
+    else if (battle_mode == -1)
+    {
+        result = 0;    //ç›´æ¥åˆ¤æ–­ä¸ºèƒœåˆ©ï¼Œç”¨äºè°ƒè¯•
+    }
     clearTalkBox();
-
     return result == 0;
 }
 
@@ -391,11 +442,11 @@ void Event::changeMainMapMusic(int music_id)
 
 bool Event::askJoin()
 {
-    menu2_->setText("ÊÇ·ñÒªÇó¼ÓÈë£¿");
+    menu2_->setText("æ˜¯å¦è¦æ±‚åŠ å…¥ï¼Ÿ");
     return menu2_->run() == 0;
 }
 
-//½ÇÉ«¼ÓÈë£¬Í¬Ê±»ñµÃ¶Ô·½ÉíÉÏµÄÎïÆ·
+//è§’è‰²åŠ å…¥ï¼ŒåŒæ—¶è·å¾—å¯¹æ–¹èº«ä¸Šçš„ç‰©å“
 void Event::join(int role_id)
 {
     for (auto& r : Save::getInstance()->Team)
@@ -421,7 +472,7 @@ void Event::join(int role_id)
 
 bool Event::askRest()
 {
-    menu2_->setText("Õˆßx“ñÊÇ»ò·ñ£¿");
+    menu2_->setText("è«‹é¸æ“‡æ˜¯æˆ–å¦ï¼Ÿ");
     return menu2_->run() == 0;
 }
 
@@ -460,11 +511,12 @@ void Event::darkScence()
 
 void Event::dead()
 {
+    menu2_->setText("å‹æ•—ä¹ƒå…µå®¶å¸¸äº‹");
     RunNode::exitAll(1);
     forceExit();
 }
 
-//Ä³ÈËÊÇ·ñÔÚ¶ÓÎé
+//æŸäººæ˜¯å¦åœ¨é˜Ÿä¼
 bool Event::inTeam(int role_id)
 {
     for (auto r : Save::getInstance()->Team)
@@ -681,7 +733,7 @@ void Event::addItemWithoutHint(int item_id, int count)
             save->Items[pos].count = count;
         }
     }
-    //µ±ÎïÆ·ÊıÁ¿Îª¸º£¬ĞèÒªÕûÀí±³°ü
+    //å½“ç‰©å“æ•°é‡ä¸ºè´Ÿï¼Œéœ€è¦æ•´ç†èƒŒåŒ…
     if (count < 0)
     {
         arrangeBag();
@@ -694,7 +746,7 @@ void Event::oldLearnMagic(int role_id, int magic_id, int no_display)
     auto m = Save::getInstance()->getMagic(magic_id);
     r->learnMagic(m);
     if (no_display) { return; }
-    text_box_->setText(convert::formatString("%sÁ•µÃÎäŒW%s", r->Name, m->Name));
+    text_box_->setText(fmt1::format("{}ç¿’å¾—æ­¦å­¸{}", r->Name, m->Name));
     text_box_->run();
 }
 
@@ -703,7 +755,7 @@ void Event::addIQ(int role_id, int value)
     auto r = Save::getInstance()->getRole(role_id);
     auto v0 = r->IQ;
     r->IQ = GameUtil::limit(v0 + value, 0, Role::getMaxValue()->IQ);
-    text_box_->setText(convert::formatString("%sÙYÙ|Ôö¼Ó%d", r->Name, r->IQ - v0));
+    text_box_->setText(fmt1::format("{}è³‡è³ªå¢åŠ {}", r->Name, r->IQ - v0));
     text_box_->run();
 }
 
@@ -797,7 +849,7 @@ void Event::roleAddItem(int role_id, int item_id, int count)
         }
     }
 
-    //ÕûÀí½ÇÉ«µÄÎïÆ·£¬×¢Òâ£ºÊµ¼ÊÉÏ²¢Ã»ÓĞ±ØÒªÃ¿´Î¶¼ÕûÀí
+    //æ•´ç†è§’è‰²çš„ç‰©å“ï¼Œæ³¨æ„ï¼šå®é™…ä¸Šå¹¶æ²¡æœ‰å¿…è¦æ¯æ¬¡éƒ½æ•´ç†
     std::map<int, int> item_count;
     for (int i = 0; i < ROLE_TAKING_ITEM_COUNT; i++)
     {
@@ -873,7 +925,7 @@ void Event::addSpeed(int role_id, int value)
     auto r = Save::getInstance()->getRole(role_id);
     auto v0 = r->Speed;
     r->Speed = GameUtil::limit(v0 + value, 0, Role::getMaxValue()->Speed);
-    text_box_->setText(convert::formatString("%sİp¹¦Ôö¼Ó%d", r->Name, r->Speed - v0));
+    text_box_->setText(fmt1::format("{}è¼•åŠŸå¢åŠ {}", r->Name, r->Speed - v0));
     text_box_->run();
 }
 
@@ -882,7 +934,8 @@ void Event::addMaxMP(int role_id, int value)
     auto r = Save::getInstance()->getRole(role_id);
     auto v0 = r->MaxMP;
     r->MaxMP = GameUtil::limit(v0 + value, 0, Role::getMaxValue()->MP);
-    text_box_->setText(convert::formatString("%sƒÈÁ¦Ôö¼Ó%d", r->Name, r->MaxMP - v0));
+    r->MP = GameUtil::limit(r->MP + value, 0, Role::getMaxValue()->MaxMP);
+    text_box_->setText(fmt1::format("{}å…§åŠ›å¢åŠ {}", r->Name, r->MaxMP - v0));
     text_box_->run();
 }
 
@@ -891,7 +944,7 @@ void Event::addAttack(int role_id, int value)
     auto r = Save::getInstance()->getRole(role_id);
     auto v0 = r->Attack;
     r->Attack = GameUtil::limit(v0 + value, 0, Role::getMaxValue()->Attack);
-    text_box_->setText(convert::formatString("%sÎäÁ¦Ôö¼Ó%d", r->Name, r->Attack - v0));
+    text_box_->setText(fmt1::format("{}æ­¦åŠ›å¢åŠ {}", r->Name, r->Attack - v0));
     text_box_->run();
 }
 
@@ -900,7 +953,8 @@ void Event::addMaxHP(int role_id, int value)
     auto r = Save::getInstance()->getRole(role_id);
     auto v0 = r->MaxHP;
     r->MaxHP = GameUtil::limit(v0 + value, 0, Role::getMaxValue()->HP);
-    text_box_->setText(convert::formatString("%sÉúÃüÔö¼Ó%d", r->Name, r->MaxHP - v0));
+    r->HP = GameUtil::limit(r->HP + value, 0, Role::getMaxValue()->MaxHP);
+    text_box_->setText(fmt1::format("{}ç”Ÿå‘½å¢åŠ {}", r->Name, r->MaxHP - v0));
     text_box_->run();
 }
 
@@ -922,13 +976,13 @@ void Event::askSoftStar()
 
 void Event::showMorality()
 {
-    text_box_->setText(convert::formatString("ÄãµÄµÀµÂÖ¸”µé%d", Save::getInstance()->getRole(0)->Morality));
+    text_box_->setText(fmt1::format("ä½ çš„é“å¾·æŒ‡æ•¸ç‚º{}", Save::getInstance()->getRole(0)->Morality));
     text_box_->run();
 }
 
 void Event::showFame()
 {
-    text_box_->setText(convert::formatString("ÄãµÄÂ•ÍûÖ¸”µé%d", Save::getInstance()->getRole(0)->Fame));
+    text_box_->setText(fmt1::format("ä½ çš„è²æœ›æŒ‡æ•¸ç‚º{}", Save::getInstance()->getRole(0)->Fame));
     text_box_->run();
 }
 
@@ -968,14 +1022,10 @@ void Event::breakStoneGate()
     play3Amination(2, 3845 * 2, 3873 * 2, 3, 3874 * 2, 4, 3903 * 2);
 }
 
-//ÎäÁÖ´ó»á
+//æ­¦æ—å¤§ä¼š
 void Event::fightForTop()
 {
-    std::vector<int> heads =
-    {
-        8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
-        22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69
-    };
+    std::vector<int> heads{ 8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19, 22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69 };
 
     for (int i = 0; i < 15; i++)
     {
@@ -1006,7 +1056,7 @@ void Event::fightForTop()
     addItem(0x8F, 1);
 }
 
-//ËùÓĞÈËÀë¶Ó
+//æ‰€æœ‰äººç¦»é˜Ÿ
 void Event::allLeave()
 {
     for (int i = 1; i < TEAMMATE_COUNT; i++)
@@ -1109,9 +1159,9 @@ void Event::clearTalkBox()
     talk_box_down_->setContent("");
 }
 
-//50À©Õ¹Ö¸Áî
-//ËäÈ»ÓĞÒ»¶¨³Ì¶ÈµÄÖ§³Ö£¬µ«ÊÇÕâ²»±íÊ¾ÍÆ¼öÊ¹ÓÃ
-void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e6, int* code_ptr)
+//50æ‰©å±•æŒ‡ä»¤
+//è™½ç„¶æœ‰ä¸€å®šç¨‹åº¦çš„æ”¯æŒï¼Œä½†æ˜¯è¿™ä¸è¡¨ç¤ºæ¨èä½¿ç”¨
+void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e6, int* code_ptr, int* code_value)
 {
     int index = 0, len = 0, offset = 0;
     char *char_ptr = nullptr, *char_ptr1 = nullptr;
@@ -1125,20 +1175,20 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
 
     switch (code)
     {
-    case 0:    //¸³Öµ
+    case 0:    //èµ‹å€¼
         x50[e1] = e2;
         break;
-    case 1:    //Êı×é¸³Öµ£¬e2²»Îª0±íÊ¾½öÒªÒ»¸ö×Ö½Ú
+    case 1:    //æ•°ç»„èµ‹å€¼ï¼Œe2ä¸ä¸º0è¡¨ç¤ºä»…è¦ä¸€ä¸ªå­—èŠ‚
         index = e3 + e_GetValue(0, e1, e4);
-        x50[index] = e_GetValue(1, e1, e4);
-        if (e2) { x50[index] = x50[index] & 0xff; }
+        x50[index] = e_GetValue(1, e1, e5);
+        if (e2) { x50[index] = x50[index] & 0x000000ff; }
         break;
-    case 2:    //Êı×éÈ¡Öµ
+    case 2:    //æ•°ç»„å–å€¼
         index = e3 + e_GetValue(0, e1, e4);
         x50[e5] = x50[index];
-        if (e2) { x50[index] = x50[index] & 0xff; }
+        if (e2) { x50[index] = x50[index] & 0x000000ff; }
         break;
-    case 3:    //»ù±¾ÔËËã
+    case 3:    //åŸºæœ¬è¿ç®—
         index = e_GetValue(0, e1, e5);
         switch (e2)
         {
@@ -1162,7 +1212,7 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
             break;
         }
         break;
-    case 4:    //ÅĞ¶Ï±äÁ¿£¬¸ÄĞ´Ìø×ª±ê¼Ç
+    case 4:    //åˆ¤æ–­å˜é‡ï¼Œæ”¹å†™è·³è½¬æ ‡è®°
         x50[0x7000] = 0;
         index = e_GetValue(0, e1, e4);
         switch (e2)
@@ -1190,34 +1240,34 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
             break;
         case 7:
             x50[0x7000] = 1;
+            break;
         }
         break;
-    case 5:    //È«²¿ÇåÁã
+    case 5:    //å…¨éƒ¨æ¸…é›¶
         memset(x50, 0, sizeof(x50));
         break;
     case 6: break;
     case 7: break;
-    case 8:    //¶Á¶Ô»°
+    case 8:    //è¯»å¯¹è¯
         index = e_GetValue(0, e1, e2);
         char_ptr = (char*)&x50[e3];
         sprintf(char_ptr, "%s", talk_contents_[index].c_str());
         break;
-    case 9:    //¸ñÊ½»¯×Ö´®
+    case 9:    //æ ¼å¼åŒ–å­—ä¸²
         e4 = e_GetValue(0, e1, e4);
         char_ptr = (char*)&x50[e2];
         char_ptr1 = (char*)&x50[e3];
         sprintf(char_ptr, char_ptr1, e4);
         break;
-    case 10:    //×Ö´®³¤¶È
-        //¸Ğ¾õÕâÑùÓĞÎÊÌâ£¬²»¹ÜÁË
-        x50[e2] = strlen((char*)&x50[e1]);
+    case 10:    //å­—ä¸²é•¿åº¦
+        x50[e2] = Font::getTextDrawSize((char*)&x50[e1]);
         break;
-    case 11:    //ºÏ²¢×Ö´®
+    case 11:    //åˆå¹¶å­—ä¸²
         char_ptr = (char*)&x50[e1];
         char_ptr1 = (char*)&x50[e2];
         sprintf(char_ptr, "%s%s", char_ptr, char_ptr1);
         break;
-    case 12:    //ÖÆÔìÒ»¸öÊÇ¿Õ¸ñµÄ×Ö´®
+    case 12:    //åˆ¶é€ ä¸€ä¸ªæ˜¯ç©ºæ ¼çš„å­—ä¸²
         //Note: here the width of one 'space' is the same as one Chinese character.
         e3 = e_GetValue(0, e1, e3);
         char_ptr = (char*)&x50[e2];
@@ -1231,10 +1281,11 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
     case 13: break;
     case 14: break;
     case 15: break;
-    case 16:    //Ğ´´æµµÊı¾İ
+    case 16:    //å†™å­˜æ¡£æ•°æ®
         e3 = e_GetValue(0, e1, e3);
         e4 = e_GetValue(1, e1, e4);
         e5 = e_GetValue(2, e1, e5);
+        e4 *= 2;
         save_int_ptr = nullptr;
         switch (e2)
         {
@@ -1246,9 +1297,10 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         }
         if (save_int_ptr) { *save_int_ptr = e5; }
         break;
-    case 17:    //¶Á´æµµÊı¾İ
+    case 17:    //è¯»å­˜æ¡£æ•°æ®
         e3 = e_GetValue(0, e1, e3);
         e4 = e_GetValue(1, e1, e4);
+        e4 *= 2;
         switch (e2)
         {
         case 0: x50[e5] = *(int*)((char*)(save->getRole(e3)) + e4); break;
@@ -1258,27 +1310,27 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         case 4: x50[e5] = *(int*)((char*)(save->getShop(e3)) + e4); break;
         }
         break;
-    case 18:    //Ğ´¶ÓÎéÊı¾İ
+    case 18:    //å†™é˜Ÿä¼æ•°æ®
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         save->Team[e2] = e3;
         break;
-    case 19:    //¶Á¶ÓÎéÊı¾İ
+    case 19:    //è¯»é˜Ÿä¼æ•°æ®
         e2 = e_GetValue(0, e1, e2);
         x50[e3] = save->Team[e2];
         break;
-    case 20:    //»ñÈ¡ÎïÆ·¸öÊı
+    case 20:    //è·å–ç‰©å“ä¸ªæ•°
         e2 = e_GetValue(0, e1, e2);
         x50[e3] = save->getItemCountInBag(e2);
         break;
-    case 21:    //Ğ´³¡¾°ÊÂ¼şÊı¾İ
+    case 21:    //å†™åœºæ™¯äº‹ä»¶æ•°æ®
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         e4 = e_GetValue(2, e1, e4);
         e5 = e_GetValue(3, e1, e5);
         *(MAP_INT*)(save->getSubMapInfo(e2)->Event(e3) + e4) = e5;
         break;
-    case 22:    //¶Á³¡¾°ÊÂ¼şÊı¾İ
+    case 22:    //è¯»åœºæ™¯äº‹ä»¶æ•°æ®
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         e4 = e_GetValue(2, e1, e4);
@@ -1299,14 +1351,14 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         e5 = e_GetValue(3, e1, e5);
         x50[e6] = save->getSubMapInfo(e2)->LayerData(e3, e4, e5);
         break;
-    case 25:    //Ç¿ĞĞĞ´ÈëÄÚ´æµØÖ·£¬²»ÒªÁË£¬×Ô¼º¿´×Å°ì
+    case 25:    //å¼ºè¡Œå†™å…¥å†…å­˜åœ°å€ï¼Œä¸è¦äº†ï¼Œè‡ªå·±çœ‹ç€åŠ
         e5 = e_GetValue(0, e1, e5);
         e6 = e_GetValue(1, e1, e6);
         break;
-    case 26:    //¶ÁÄÚ´æµØÖ·£¬Í¬ÉÏ
+    case 26:    //è¯»å†…å­˜åœ°å€ï¼ŒåŒä¸Š
         e6 = e_GetValue(0, e1, e6);
         break;
-    case 27:    //¶ÁÃû×Öµ½±äÁ¿
+    case 27:    //è¯»åå­—åˆ°å˜é‡
         e3 = e_GetValue(0, e1, e3);
         char_ptr = (char*)&x50[e4];
         switch (e2)
@@ -1317,33 +1369,42 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         case 3: sprintf(char_ptr, "%s", save->getMagic(e3)->Name); break;
         }
         break;
-    case 28:    //28~31ÎªÕ½¶·Ö¸Áî£¬²»ÒªÁË
+    case 28:    //28~31ä¸ºæˆ˜æ–—æŒ‡ä»¤ï¼Œä¸è¦äº†
         break;
     case 29: break;
     case 30: break;
     case 31: break;
-    case 32:    //ĞŞ¸ÄÏÂÒ»ÌõÖ¸Áî
+    case 32:    //ä¿®æ”¹ä¸‹ä¸€æ¡æŒ‡ä»¤
         e3 = e_GetValue(0, e1, e3);
-        *(code_ptr + e3) = x50[e2];
+        if (use_script_ == 0)
+        {
+            *(code_ptr + e3) = x50[e2];
+        }
+        else
+        {
+            *code_ptr = e3;
+            *code_value = x50[e2];
+        }
         break;
-    case 33:    //»­Ò»¸ö×Ö´®
+    case 33:    //ç”»ä¸€ä¸ªå­—ä¸²
         e3 = e_GetValue(0, e1, e3);
         e4 = e_GetValue(1, e1, e4);
         e5 = e_GetValue(2, e1, e5);
         char_ptr = (char*)&x50[e2];
-        Font::getInstance()->draw(char_ptr, 20, e3, e4 /*BP_Color(e5)*/);
+        event_node_->Infos.emplace_back(DrawNode::Info{ 0, e3, e4, char_ptr });
         break;
-    case 34:    //»­Ò»¸ö±³¾°¿ò
+    case 34:    //ç”»ä¸€ä¸ªèƒŒæ™¯æ¡†ï¼ŒåºŸå¼ƒ
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         e4 = e_GetValue(2, e1, e4);
         e5 = e_GetValue(3, e1, e5);
-        Engine::getInstance()->fillColor({ 0, 0, 0, 128 }, e2, e3, e4, e5);
+        //Engine::getInstance()->fillColor({ 0, 0, 0, 128 }, e2, e3, e4, e5);
         break;
-    case 35:    //ÔİÍ£µÈ´ı°´¼ü
+    case 35:    //æš‚åœç­‰å¾…æŒ‰é”®
         text_box_->setText("");
         text_box_->setTexture("", 0);
         x50[e1] = text_box_->run();
+        event_node_->clear();
         switch (x50[e1])
         {
         case SDLK_LEFT: x50[e1] = 154; break;
@@ -1352,7 +1413,7 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         case SDLK_DOWN: x50[e1] = 152; break;
         }
         break;
-    case 36:    //»­´ø±³¾°¿òµÄ×Ö´®µÈ´ı°´¼ü£¬Èç¹û°´ÏÂµÄÊÇyÉèÖÃÌø×ªÖ¸Ê¾Îª0
+    case 36:    //ç”»å¸¦èƒŒæ™¯æ¡†çš„å­—ä¸²ç­‰å¾…æŒ‰é”®ï¼Œå¦‚æœæŒ‰ä¸‹çš„æ˜¯yè®¾ç½®è·³è½¬æŒ‡ç¤ºä¸º0
         e3 = e_GetValue(0, e1, e3);
         e4 = e_GetValue(1, e1, e4);
         e5 = e_GetValue(2, e1, e5);
@@ -1362,44 +1423,55 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         talk_box_up_->setHeadStyle(2);
         x50[0x7000] = talk_box_up_->run();
         break;
-    case 37:    //ÑÓÊ±
+    case 37:    //å»¶æ—¶
         Engine::getInstance()->delay(e2 = e_GetValue(0, e1, e2));
         break;
-    case 38:    //Ëæ»úÊı
+    case 38:    //éšæœºæ•°
         e2 = e_GetValue(0, e1, e2);
         x50[e3] = rand_.rand_int(e2);
         break;
     case 39:
-    case 40:    //²Ëµ¥
+    case 40:    //èœå•
     {
         e2 = e_GetValue(0, e1, e2);
         e5 = e_GetValue(1, e1, e5);
         e6 = e_GetValue(2, e1, e6);
-        for (int i = 0; i < e2 - 1; i++)
+        for (int i = 0; i < e2; i++)
         {
-            strs.push_back((char*)x50[x50[e3 + i]]);
+            char_ptr = (char*)&x50[x50[e3 + i]];
+            strs.push_back(std::to_string(i) + char_ptr);
         }
         auto menu = std::make_shared<MenuText>();
         menu->setStrings(strs);
-        x50[e4] = menu->run();
+        menu->setPosition(e5, e6);
+        x50[e4] = menu->run() + 1;
     }
     break;
-    case 41:    //»­Ò»ÕÅÍ¼
+    case 41:    //ç”»ä¸€å¼ å›¾
         e3 = e_GetValue(0, e1, e3);
         e4 = e_GetValue(1, e1, e4);
         e5 = e_GetValue(2, e1, e5);
         switch (e2)
         {
-        case 0: TextureManager::getInstance()->renderTexture("mmap", e5, e3, e4); break;
-        case 1: TextureManager::getInstance()->renderTexture("head", e5, e3, e4); break;
+        case 0:
+            if (submap_id_ < 0)
+            {
+                event_node_->Infos.emplace_back(DrawNode::Info{ 1, e3, e4, "mmap", e5 });
+            }
+            else
+            {
+                event_node_->Infos.emplace_back(DrawNode::Info{ 1, e3, e4, "smap", e5 });
+            }
+            break;
+        case 1: event_node_->Infos.emplace_back(DrawNode::Info{ 1, e3, e4, "head", e5 }); break;
         }
         break;
-    case 42:    //¸Ä±äÖ÷µØÍ¼×ø±ê
+    case 42:    //æ”¹å˜ä¸»åœ°å›¾åæ ‡
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(0, e1, e3);
         MainScene::getInstance()->setManPosition(e2, e3);
         break;
-    case 43:    //µ÷ÓÃÁíÍâÊÂ¼ş
+    case 43:    //è°ƒç”¨å¦å¤–äº‹ä»¶
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         e4 = e_GetValue(2, e1, e4);
@@ -1411,7 +1483,7 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         x50[0x7103] = e6;
         callEvent(e2);
         break;
-    case 44:    //44~47ÎªÕ½¶·Ö¸Áî£¬²»ÒªÁË
+    case 44:    //44~47ä¸ºæˆ˜æ–—æŒ‡ä»¤ï¼Œä¸è¦äº†
         break;
     case 45: break;
     case 46:
@@ -1429,30 +1501,30 @@ void Event::instruct_50e(int code, int e1, int e2, int e3, int e4, int e5, int e
         }
         break;
     case 47: break;
-    case 48:    //×Ô¼ºµ÷ÊÔ°É£¬ÀÁµÃ¹Ü
+    case 48:    //è‡ªå·±è°ƒè¯•å§ï¼Œæ‡’å¾—ç®¡
         for (int i = e1; i < e1 + e2 - 1; i++)
         {
-            printf("x50[%d]=%d\n", i, x50[i]);
+            fmt1::print("x50[%d]=%d\n", i, x50[i]);
         }
         break;
     case 49: break;
-    case 50:    //ÊäÈëÃû×Ö£¬É¾³ı
+    case 50:    //è¾“å…¥åå­—ï¼Œåˆ é™¤
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         e4 = e_GetValue(2, e1, e4);
         e5 = e_GetValue(3, e1, e5);
         switch (e2)
         {
-            //0: p: = @Rrole[e3].Name[0];
-            //1: p: = @Ritem[e3].Name[0];
-            //2: p: = @Rmagic[e3].Name[0];
-            //3: p: = @Rscence[e3].Name[0];
+        case 0: char_ptr1 = &save->getRole(e3)->Name[0]; break;
+        case 1: char_ptr1 = &save->getItem(e3)->Name[0]; break;
+        case 2: char_ptr1 = &save->getMagic(e3)->Name[0]; break;
+        case 3: char_ptr1 = &save->getSubMapInfo(e3)->Name[0]; break;
         }
-        str = "Õˆİ”ÈëÃû×Ö£º";
+        str = "è«‹è¼¸å…¥åå­—ï¼š";
         char_ptr1 = (char*)&str[1];
         break;
     case 51: break;
-    case 52:    //ÅĞ¶ÏÄ³ÈËÊÇ·ñÒÑÕÆÎÕÄ³ÎäÑ§µÈ¼¶
+    case 52:    //åˆ¤æ–­æŸäººæ˜¯å¦å·²æŒæ¡æŸæ­¦å­¦ç­‰çº§
         e2 = e_GetValue(0, e1, e2);
         e3 = e_GetValue(1, e1, e3);
         e4 = e_GetValue(2, e1, e4);

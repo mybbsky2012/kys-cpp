@@ -2,19 +2,23 @@
 #include "Engine.h"
 #include <map>
 #include <string>
+#include <unordered_map>
 
 class Font
 {
 private:
     Font();
-    ~Font();
 
-    std::string fontnamec_ = "../game/font/chinese.ttf";
-    std::string fontnamee_ = "../game/font/english.ttf";
+    std::string fontnamec_;
+    std::string fontnamee_;
 
     int stat_message_ = 0;
 
-    std::map<uint16_t, BP_Texture*> buffer_;    //»º´æ»­¹ıµÄ×ÖÌå
+    int simplified_ = 1;
+
+    std::map<uint32_t, std::map<int, BP_Texture*>> buffer_;    //ç¼“å­˜ç”»è¿‡çš„å­—ä½“
+
+    std::unordered_map<std::string, std::string> t2s_buffer_;    //ç¼“å­˜ç¹ä½“è½¬ç®€ä½“çš„ç»“æœ
 
 public:
     static Font* getInstance()
@@ -28,5 +32,7 @@ public:
     void drawWithBox(const std::string& text, int size, int x, int y, BP_Color color = { 255, 255, 255, 255 }, uint8_t alpha = 255, uint8_t alpha_box = 255);
     void drawText(const std::string& fontname, std::string& text, int size, int x, int y, uint8_t alpha, int align, BP_Color c);
     void clearBuffer();
-    int getBufferSize() { return buffer_.size(); }
+    int getBufferSize();
+    static int getTextDrawSize(const std::string& text);
+    void setSimplified(int s) { simplified_ = s; }
 };

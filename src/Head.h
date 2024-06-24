@@ -1,25 +1,32 @@
 #pragma once
 #include "TextBox.h"
 #include "Types.h"
-#include <memory>
 
-//»æÖÆ´øÈËÎïÍ·ÏñµÄ¼òÃ÷×´Ì¬
-//×¢Òâ£¬²¿·ÖÀàĞÍ¼Ì³Ğ´ËÀà£¬ÊÇÎªÁËÊ¹ÓÃroleÖ¸Õë
+//ç»˜åˆ¶å¸¦äººç‰©å¤´åƒçš„ç®€æ˜çŠ¶æ€
+//æ³¨æ„ï¼Œéƒ¨åˆ†ç±»å‹ç»§æ‰¿æ­¤ç±»ï¼Œæ˜¯ä¸ºäº†ä½¿ç”¨roleæŒ‡é’ˆ
 class Head : public TextBox
 {
 protected:
     Role* role_ = nullptr;
-    bool only_head_ = false;
+    int style_ = 0;
+    int width_ = 800;
+    int always_light_ = 0;
+    int HP_;
+    int MP_;
+    int PhysicalPower_;
+
 public:
     Head(Role* r = nullptr);
     virtual ~Head();
 
     virtual void draw() override;
-    void setRole(Role* r) { role_ = r; }
+    void setRole(Role* r);
     Role* getRole() { return role_; }
-    void setOnlyHead(bool b) { only_head_ = b; }
-
+    void setStyle(int i) { style_ = i; }
+    void setAlwaysLight(int i) { always_light_ = i; }
+    int getWidth() { return width_; }
     virtual void onPressedOK() override {}
     virtual void onPressedCancel() override {}
+    virtual void backRun() override;
 };
 

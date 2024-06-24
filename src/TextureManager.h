@@ -1,12 +1,18 @@
-#pragma once
+ï»¿#pragma once
 #include "Engine.h"
 #include "ZipFile.h"
 #include <map>
 #include <vector>
 
-//Í¼Æ¬ÎÆÀíÀà£¬ÓÃ×Ö´®ºÍ±àºÅÀ´Ë÷Òı
-//Ò»¸öÎÆÀí×î¶à¿ÉÒÔ°üº¬10ÕÅ×ÓÎÆÀí£¬»áËæ»ú±»Ìù³ö£¬Ä£Äâ¶¯Ì¬Ğ§¹û
-//Ã¿×éÍ¼Æ¬µÄÆ«ÒÆÓÃÁ½¸öint16[n][2]À´±£´æ£¬ĞèÒª×¢ÒâµÄÊÇ£¬UIÔªËØÊ¹ÓÃµÄÍ¼Æ¬×îºÃÆäÆ«ÒÆ¶¼ÉèÎª0£¬·ñÔò¼ÆËãÊó±ê·¶Î§Ê±»áÓĞÒ»Ğ©ÎÊÌâ£¬Ê¹ÓÃÆğÀ´Ò²±È½ÏÂé·³
+//å›¾ç‰‡çº¹ç†ç±»ï¼Œç”¨å­—ä¸²å’Œç¼–å·æ¥ç´¢å¼•
+//ä¸€ä¸ªçº¹ç†æœ€å¤šå¯ä»¥åŒ…å«10å¼ å­çº¹ç†ï¼Œä¼šéšæœºè¢«è´´å‡ºï¼Œæ¨¡æ‹ŸåŠ¨æ€æ•ˆæœ
+//æ¯ç»„å›¾ç‰‡çš„åç§»ç”¨ä¸¤ä¸ªint16[n][2]æ¥ä¿å­˜ï¼Œéœ€è¦æ³¨æ„çš„æ˜¯ï¼ŒUIå…ƒç´ ä½¿ç”¨çš„å›¾ç‰‡æœ€å¥½å…¶åç§»éƒ½è®¾ä¸º0ï¼Œå¦åˆ™è®¡ç®—é¼ æ ‡èŒƒå›´æ—¶ä¼šæœ‰ä¸€äº›é—®é¢˜ï¼Œä½¿ç”¨èµ·æ¥ä¹Ÿæ¯”è¾ƒéº»çƒ¦
+
+struct GroupInfo
+{
+    ZipFile zip;
+    std::string path;
+};
 
 struct Texture
 {
@@ -16,48 +22,42 @@ struct Texture
     };
 
     BP_Texture* tex[SUB_TEXTURE_COUNT] = { nullptr };
+    BP_Texture* tex_white = nullptr;
     int w = 0, h = 0, dx = 0, dy = 0;
     bool loaded = false;
     int count = 1;
     int prev_show;
-    void setTex(BP_Texture* t)
-    {
-        destory();
-        tex[0] = t;
-        count = 1;
-        loaded = true;
-        Engine::getInstance()->queryTexture(t, &w, &h);
-    }
+    void setTex(BP_Texture* t);
     BP_Texture* getTexture(int i = 0) { return tex[i]; }
 
+    GroupInfo* group_info_ = nullptr;
+    int num_ = -1;
+
+    void load();
+    void createWhiteTexture();
+
 private:
-    void destory()
-    {
-        for (int i = 0; i < SUB_TEXTURE_COUNT; i++)
-        {
-            if (tex[i])
-            {
-                Engine::destroyTexture(tex[i]);
-            }
-        }
-    }
+    void destory();
 };
 
-struct TextureGroup : public std::vector<Texture*>
+struct TextureGroup
 {
     friend class TextureManager;
 
 public:
+    std::vector<Texture*> group_;
     int inited_ = 0;
-    ZipFile zip_;
-    ZipFile* getZip() { return &zip_; }
-    std::string path_;
-    const std::string& getPath() { return path_; }
+    GroupInfo info_;
+    //ZipFile zip_;
+    //ZipFile* getZip() { return &zip_; }
+    //std::string path_;
+    //const std::string& getPath() { return path_; }
     std::string getFileContent(const std::string& filename);
 
 protected:
     void init(const std::string& path, int load_from_path, int load_all);
-    void loadTexture(int num, Texture* t);
+    //void loadTexture(int num, Texture* t);
+    //void loadTextureWhite(int num, Texture* t);
 };
 
 class TextureManager
@@ -65,8 +65,8 @@ class TextureManager
 private:
     TextureManager();
     virtual ~TextureManager();
-    std::string path_ = "../game/resource/";
-    int load_from_path_ = 0;    //0 - ÏÈ³¢ÊÔ¶ÁÈ¡zip£¬ÈçÃ»ÓĞÔò¶ÁÈ¡Ä¿Â¼£»1 - ²»³¢ÊÔ¶ÁÈ¡zip£¬Ö±½Ó¶ÁÈ¡Ä¿Â¼
+    std::string path_;
+    int load_from_path_ = 0;    //0 - å…ˆå°è¯•è¯»å–zipï¼Œå¦‚æ²¡æœ‰åˆ™è¯»å–ç›®å½•ï¼›1 - ä¸å°è¯•è¯»å–zipï¼Œç›´æ¥è¯»å–ç›®å½•
     int load_all_ = 0;
     std::map<const std::string, TextureGroup> map_;
 
@@ -79,16 +79,16 @@ public:
 
 public:
     void renderTexture(Texture* tex, BP_Rect r,
-        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255);
+        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255, double angle = 0, uint8_t white = 0);
     void renderTexture(const std::string& path, int num, BP_Rect r,
-        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255);
+        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255, double angle = 0, uint8_t white = 0);
 
     void renderTexture(Texture* tex, int x, int y,
-        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255, double zoom_x = 1, double zoom_y = 1);
+        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255, double zoom_x = 1, double zoom_y = 1, double angle = 0, uint8_t white = 0);
     void renderTexture(const std::string& path, int num, int x, int y,
-        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255, double zoom_x = 1, double zoom_y = 1);
+        BP_Color c = { 255, 255, 255, 255 }, uint8_t alpha = 255, double zoom_x = 1, double zoom_y = 1, double angle = 0, uint8_t white = 0);
 
-    Texture* loadTexture(const std::string& path, int num);
+    Texture* getTexture(const std::string& path, int num);
     int getTextureGroupCount(const std::string& path);
     TextureGroup* getTextureGroup(const std::string& path);
     void setLoadFromPath(int l) { load_from_path_ = l; }

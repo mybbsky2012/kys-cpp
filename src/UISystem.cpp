@@ -3,13 +3,16 @@
 #include "Event.h"
 #include "Script.h"
 #include "Engine.h"
+#include "GameUtil.h"
+#include "UIKeyConfig.h"
 
 UISystem::UISystem()
 {
     title_ = std::make_shared<MenuText>();
-    title_->setStrings({ "×xÈ¡ßM¶È", "±£´æßM¶È", "ÎÒµÄ´ú´a", "ëxé_ß[‘ò" });
+    title_->setStrings({ "è®€å–é€²åº¦", "ä¿å­˜é€²åº¦", "æˆ‘çš„ä»£ç¢¼","éµä½é…ç½®", "é›¢é–‹éŠæˆ²" });
     title_->setFontSize(24);
     title_->arrange(100, 50, 120, 0);
+    title_->setLRStyle(1);
     addChild(title_);
 }
 
@@ -22,7 +25,7 @@ void UISystem::onPressedOK()
     result_ = -1;
     if (title_->getResult() == 0)
     {
-        //¶Áµµ
+        //è¯»æ¡£
         auto ui_load = std::make_shared<UISave>();
         ui_load->setMode(0);
         ui_load->setFontSize(22);
@@ -30,7 +33,7 @@ void UISystem::onPressedOK()
     }
     else if (title_->getResult() == 1)
     {
-        //´æµµ
+        //å­˜æ¡£
         auto ui_save = std::make_shared<UISave>();
         ui_save->setMode(1);
         ui_save->setFontSize(22);
@@ -38,7 +41,13 @@ void UISystem::onPressedOK()
     }
     else if (title_->getResult() == 2)
     {
-        Script::getInstance()->runScript("../game/script/1.lua");
+        Script::getInstance()->runScript(GameUtil::PATH() + "script/1.lua");
+    }
+    else if (title_->getResult() == 3)
+    {
+        auto menu = std::make_shared<UIKeyConfig>();
+        menu->setPosition(200, 200);
+        menu->run();
     }
     else if (title_->getResult() == title_->getChildCount() - 1)
     {
@@ -55,21 +64,22 @@ int UISystem::askExit(int mode)
     {
         asking = true;
         auto menu = std::make_shared<MenuText>();
-        menu->setStrings({ "ëxé_ß[‘ò", "·µ»Øé_î^", "ÎÒücåeÁË" });
+        menu->setStrings({ "é›¢é–‹éŠæˆ²", "è¿”å›žé–‹é ­", "æˆ‘é»žéŒ¯äº†" });
         menu->setFontSize(24);
         menu->arrange(0, 0, 0, 40);
-        int x = 760, y = 100;
+        int x = 880, y = 100;
         if (mode == 1)
         {
-            x = Engine::getInstance()->getWindowWidth() - 150;
+            x = Engine::getInstance()->getStartWindowWidth() - 150;
             y = 20;
         }
         int r = menu->runAtPosition(x, y);
         if (r == 0)
         {
-            exitAll();
-            Event::getInstance()->forceExit();
-            ret = 0;
+            //exitAll();
+            //Event::getInstance()->forceExit();
+            //ret = 0;
+            exit(0);    //çˆ±å’‹å’‹åœ°
         }
         else if (r == 1)
         {

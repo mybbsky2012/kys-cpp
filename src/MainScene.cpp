@@ -1,14 +1,13 @@
 #include "MainScene.h"
 #include "Console.h"
-#include "File.h"
+#include "GameUtil.h"
+#include "GrpIdxFile.h"
 #include "Random.h"
 #include "Save.h"
 #include "SubScene.h"
 #include "TextureManager.h"
 #include "UI.h"
 #include "UISave.h"
-#include <ctime>
-//#include "Timer.h"
 
 MainScene::MainScene()
 {
@@ -27,11 +26,11 @@ MainScene::MainScene()
 
         int length = COORD_COUNT * COORD_COUNT * sizeof(MAP_INT);
 
-        File::readFile("../game/resource/earth.002", &earth_layer1.data(0), length);
-        File::readFile("../game/resource/surface.002", &surface_layer1.data(0), length);
-        File::readFile("../game/resource/building.002", &building_layer1.data(0), length);
-        File::readFile("../game/resource/buildx.002", &build_x_layer_.data(0), length);
-        File::readFile("../game/resource/buildy.002", &build_y_layer_.data(0), length);
+        GrpIdxFile::readFile(GameUtil::PATH() + "resource/earth.002", &earth_layer1.data(0), length);
+        GrpIdxFile::readFile(GameUtil::PATH() + "resource/surface.002", &surface_layer1.data(0), length);
+        GrpIdxFile::readFile(GameUtil::PATH() + "resource/building.002", &building_layer1.data(0), length);
+        GrpIdxFile::readFile(GameUtil::PATH() + "resource/buildx.002", &build_x_layer_.data(0), length);
+        GrpIdxFile::readFile(GameUtil::PATH() + "resource/buildy.002", &build_y_layer_.data(0), length);
 
         divide2(earth_layer1, earth_layer_);
         divide2(surface_layer1, surface_layer_);
@@ -39,17 +38,14 @@ MainScene::MainScene()
     }
     data_readed_ = true;
 
-    //100¸öÔÆ
+    //100ä¸ªäº‘
     cloud_vector_.resize(100);
     for (int i = 0; i < 100; i++)
     {
         cloud_vector_[i].initRand();
     }
     //getEntrance();
-    weather_ = std::make_shared<ParticleWeather>();
-    weather_->setRenderer(Engine::getInstance()->getRenderer());
-    weather_->setTexture(TextureManager::getInstance()->loadTexture("title", 201)->getTexture());
-    weather_->stopSystem();
+    weather_ = std::make_shared<ParticleExample>();
     addChild(weather_);
 }
 
@@ -64,7 +60,7 @@ void MainScene::divide2(MapSquareInt& m1, MapSquare<Object>& m)
         m1.data(i) /= 2;
         if (m1.data(i) > 0)
         {
-            m.data(i).tex_ = TextureManager::getInstance()->loadTexture("mmap", m1.data(i));
+            m.data(i).tex_ = TextureManager::getInstance()->getTexture("mmap", m1.data(i));
             auto pic = m1.data(i);
             auto& a = m.data(i);
             if (pic == 419 || pic >= 306 && pic <= 335)
@@ -106,7 +102,7 @@ void MainScene::draw()
     int building_count = 0;
     //TextureManager::getInstance()->renderTexture("mmap", 0, 0, 0);
     Engine::getInstance()->fillColor({ 0, 0, 0, 255 }, 0, 0, -1, -1);
-    //ÏÂÃæµÄ15ÊÇÏÂ·½½Ï¸ßÌùÍ¼µÄÓàÁ¿£¬ÆäÓà³¡¾°Í¬
+    //ä¸‹é¢çš„15æ˜¯ä¸‹æ–¹è¾ƒé«˜è´´å›¾çš„ä½™é‡ï¼Œå…¶ä½™åœºæ™¯åŒ
     for (int sum = -view_sum_region_; sum <= view_sum_region_ + 15; sum++)
     {
         for (int i = -view_width_region_; i <= view_width_region_; i++)
@@ -119,9 +115,9 @@ void MainScene::draw()
             //auto p = getMapPoint(ix, iy, *_Mx, *_My);
             if (!isOutLine(ix, iy))
             {
-                //¹²·Ö3²ã£¬µØÃæ£¬±íÃæ£¬½¨Öş£¬Ö÷½Ç°üÀ¨ÔÚ½¨ÖşÖĞ
+                //å…±åˆ†3å±‚ï¼Œåœ°é¢ï¼Œè¡¨é¢ï¼Œå»ºç­‘ï¼Œä¸»è§’åŒ…æ‹¬åœ¨å»ºç­‘ä¸­
 #ifndef _DEBUG
-                //µ÷ÊÔÄ£Ê½ÏÂ²»»­³öµØÃæ£¬Í¼µÄÊıÁ¿Ì«¶àÕ¼ÓÃCPUºÜ´ó
+                //è°ƒè¯•æ¨¡å¼ä¸‹ä¸ç”»å‡ºåœ°é¢ï¼Œå›¾çš„æ•°é‡å¤ªå¤šå ç”¨CPUå¾ˆå¤§
                 if (earth_layer_.data(ix, iy).getTexture())
                 {
                     TextureManager::getInstance()->renderTexture(earth_layer_.data(ix, iy).getTexture(), p.x, p.y);
@@ -133,9 +129,9 @@ void MainScene::draw()
                 }
                 if (building_layer_.data(ix, iy).getTexture())
                 {
-                    //¸ù¾İÍ¼Æ¬µÄ¿í¶È¼ÆËãÍ¼µÄÖĞµã, Îª±ÜÃâ³öÏÖĞ¡Êı, Êµ¼ÊÊÇÖĞµã×ø±êµÄ2±¶
-                    //´ÎÒªÅÅĞòÒÀ¾İÊÇy×ø±ê
-                    //Ö±½ÓÉèÖÃzÖá
+                    //æ ¹æ®å›¾ç‰‡çš„å®½åº¦è®¡ç®—å›¾çš„ä¸­ç‚¹, ä¸ºé¿å…å‡ºç°å°æ•°, å®é™…æ˜¯ä¸­ç‚¹åæ ‡çš„2å€
+                    //æ¬¡è¦æ’åºä¾æ®æ˜¯yåæ ‡
+                    //ç›´æ¥è®¾ç½®zè½´
                     auto tex = building_layer_.data(ix, iy).getTexture();
                     auto w = tex->w;
                     auto h = tex->h;
@@ -152,7 +148,7 @@ void MainScene::draw()
                     }
                     else
                     {
-                        man_pic_ = MAN_PIC_0 + Scene::towards_ * MAN_PIC_COUNT + step_;    //Ã¿¸ö·½ÏòµÄµÚÒ»ÕÅÊÇ¾²Ö¹Í¼
+                        man_pic_ = MAN_PIC_0 + Scene::towards_ * MAN_PIC_COUNT + step_;    //æ¯ä¸ªæ–¹å‘çš„ç¬¬ä¸€å¼ æ˜¯é™æ­¢å›¾
                         if (rest_time_ >= BEGIN_REST_TIME)
                         {
                             man_pic_ = REST_PIC_0 + Scene::towards_ * REST_PIC_COUNT + (rest_time_ - BEGIN_REST_TIME) / REST_INTERVAL % REST_PIC_COUNT;
@@ -160,7 +156,7 @@ void MainScene::draw()
                     }
                     int c = 1024 * (ix + iy) + ix;
                     //map[2 * c] = {2*c, man_pic_, p };
-                    building_vec[building_count++] = { 2 * c, TextureManager::getInstance()->loadTexture("mmap", man_pic_), p };
+                    building_vec[building_count++] = { 2 * c, TextureManager::getInstance()->getTexture("mmap", man_pic_), p };
                 }
             }
         }
@@ -188,15 +184,15 @@ void MainScene::draw()
     {
         c.draw();
     }
-    //printf("%d buildings in %g s.\n", building_count, t1.getElapsedTime());
+    //fmt1::print("%d buildings in %g s.\n", building_count, t1.getElapsedTime());
     //Engine::getInstance()->setColor(Engine::getInstance()->getRenderAssistTexture(), { 227, 207, 87, 255 });
-    Engine::getInstance()->renderAssistTextureToWindow();
+    Engine::getInstance()->renderAssistTextureToMain();
 }
 
 void MainScene::backRun()
 {
-    rest_time_++;    //Ö»Òª³öÏÖ×ß¶¯£¬rest_time¾Í»áÇåÁã
-    //ÔÆµÄÌùÍ¼
+    rest_time_++;    //åªè¦å‡ºç°èµ°åŠ¨ï¼Œrest_timeå°±ä¼šæ¸…é›¶
+    //äº‘çš„è´´å›¾
     view_cloud_ = 0;
     for (auto& c : cloud_vector_)
     {
@@ -214,11 +210,11 @@ void MainScene::backRun()
 
 void MainScene::dealEvent(BP_Event& e)
 {
-    //Ç¿ÖÆ½øÈë£¬Í¨³£ÓÃÓÚ¿ªÊ¼
+    //å¼ºåˆ¶è¿›å…¥ï¼Œé€šå¸¸ç”¨äºå¼€å§‹
     if (force_submap_ >= 0)
     {
         setVisible(true);
-        auto sub_map =  std::make_shared<SubScene>(force_submap_);
+        auto sub_map = std::make_shared<SubScene>(force_submap_);
         sub_map->setManViewPosition(force_submap_x_, force_submap_y_);
         sub_map->setTowards(towards_);
         sub_map->setForceBeginEvent(force_event_);
@@ -228,88 +224,120 @@ void MainScene::dealEvent(BP_Event& e)
         force_event_ = -1;
     }
 
-    int x = man_x_, y = man_y_;
-
-    //¼üÅÌ×ßÂ·²¿·Ö£¬¼ì²â4¸ö·½Ïò¼ü
-    int pressed = 0;
-
-    // Tab¼¤»î¿ØÖÆÌ¨
-    if (Engine::getInstance()->checkKeyPress(BPK_TAB))
+    // Tabæ¿€æ´»æ§åˆ¶å°
+    if (e.type == BP_KEYUP && e.key.keysym.sym == BPK_TAB)
     {
         Console c;
     }
-
-    for (auto i = int(BPK_RIGHT); i <= int(BPK_UP); i++)
+    if ((e.type == BP_KEYUP && e.key.keysym.sym == BPK_ESCAPE)
+        || (e.type == BP_MOUSEBUTTONUP && e.button.button == BP_BUTTON_RIGHT)
+        || (e.type == BP_CONTROLLERBUTTONUP && e.cbutton.button == BP_CONTROLLER_BUTTON_START))
     {
-        if (i != pre_pressed_ && Engine::getInstance()->checkKeyPress(i))
+        UI::getInstance()->run();
+    }
+    //fmt1::print("{} {} {}\n",current_frame_, Engine::getTicks(), Timer::getNowAsString());
+    int x = man_x_, y = man_y_;
+    auto engine = Engine::getInstance();
+    if (engine->getTicks() - pre_pressed_ticks_ > key_walk_delay)
+    {
+        //é”®ç›˜èµ°è·¯éƒ¨åˆ†ï¼Œæ£€æµ‹4ä¸ªæ–¹å‘é”®
+        int pressed = 0;
+        pre_pressed_ticks_ = engine->getTicks();
+        auto axis_x = engine->gameControllerGetAxis(BP_CONTROLLER_AXIS_LEFTX);
+        auto axis_y = engine->gameControllerGetAxis(BP_CONTROLLER_AXIS_LEFTY);
+        if (abs(axis_x) < 10000) { axis_x = 0; }
+        if (abs(axis_y) < 10000) { axis_y = 0; }
+        if (axis_x != 0 || axis_y != 0)
         {
-            pressed = i;
+            Pointf axis{ double(axis_x), double(axis_y) };
+            auto to = realTowardsToFaceTowards(axis);
+            if (to == Towards_LeftUp) { pressed = BPK_LEFT; }
+            if (to == Towards_LeftDown) { pressed = BPK_DOWN; }
+            if (to == Towards_RightDown) { pressed = BPK_RIGHT; }
+            if (to == Towards_RightUp) { pressed = BPK_UP; }
         }
-    }
-    if (pressed == 0 && Engine::getInstance()->checkKeyPress(pre_pressed_))
-    {
-        pressed = pre_pressed_;
-    }
-    pre_pressed_ = pressed;
+        if (engine->gameControllerGetButton(BP_CONTROLLER_BUTTON_DPAD_LEFT)) { pressed = BPK_LEFT; }
+        if (engine->gameControllerGetButton(BP_CONTROLLER_BUTTON_DPAD_DOWN)) { pressed = BPK_DOWN; }
+        if (engine->gameControllerGetButton(BP_CONTROLLER_BUTTON_DPAD_RIGHT)) { pressed = BPK_RIGHT; }
+        if (engine->gameControllerGetButton(BP_CONTROLLER_BUTTON_DPAD_UP)) { pressed = BPK_UP; }
+        if (engine->checkKeyPress(BPK_a)) { pressed = BPK_LEFT; }
+        if (engine->checkKeyPress(BPK_s)) { pressed = BPK_DOWN; }
+        if (engine->checkKeyPress(BPK_d)) { pressed = BPK_RIGHT; }
+        if (engine->checkKeyPress(BPK_w)) { pressed = BPK_UP; }
 
-    if (pressed)
-    {
-        //×¢Òâ£¬ÖĞ¼ä¿Õ³ö¼¸¸ö²½ÊıÊÇÎªÁË¿ÉÒÔµ¥²½ĞĞ¶¯£¬×Ó³¡¾°Í¬
-        if (total_step_ < 1 || total_step_ >= first_step_delay_)
+        for (auto i = int(BPK_RIGHT); i <= int(BPK_UP); i++)
         {
-            changeTowardsByKey(pressed);
-            getTowardsPosition(man_x_, man_y_, towards_, &x, &y);
-            tryWalk(x, y);
-        }
-        total_step_++;
-    }
-    else
-    {
-        total_step_ = 0;
-    }
-
-    if (pressed && checkEntrance(x, y))
-    {
-        way_que_.clear();
-        total_step_ = 0;
-    }
-
-    if (!way_que_.empty())
-    {
-        Point p = way_que_.back();
-        x = p.x;
-        y = p.y;
-        auto tw = calTowards(man_x_, man_y_, x, y);
-        if (tw != Towards_None)
-        {
-            towards_ = tw;
-        }
-        tryWalk(x, y);
-        way_que_.pop_back();
-        if (way_que_.empty() && mouse_event_x_ >= 0 && mouse_event_y_ >= 0)
-        {
-            towards_ = calTowards(man_x_, man_y_, mouse_event_x_, mouse_event_y_);
-            if (checkEntrance(mouse_event_x_, mouse_event_y_))
+            if (i != pre_pressed_ && engine->checkKeyPress(i))
             {
-                way_que_.clear();
-                setMouseEventPoint(-1, -1);
+                pressed = i;
+            }
+        }
+        if (pressed == 0 && engine->checkKeyPress(pre_pressed_))
+        {
+            pressed = pre_pressed_;
+        }
+        pre_pressed_ = pressed;
+
+        if (pressed)
+        {
+            //æ³¨æ„ï¼Œä¸­é—´ç©ºå‡ºå‡ ä¸ªæ­¥æ•°æ˜¯ä¸ºäº†å¯ä»¥å•æ­¥è¡ŒåŠ¨ï¼Œå­åœºæ™¯åŒ
+            if (total_step_ < 1 || total_step_ >= first_step_delay_)
+            {
+                changeTowardsByKey(pressed);
+                getTowardsPosition(man_x_, man_y_, towards_, &x, &y);
+                tryWalk(x, y);
+            }
+            total_step_++;
+        }
+        else
+        {
+            total_step_ = 0;
+        }
+
+        if (pressed && checkEntrance(x, y))
+        {
+            way_que_.clear();
+            total_step_ = 0;
+        }
+
+        if (!way_que_.empty())
+        {
+            Point p = way_que_.back();
+            x = p.x;
+            y = p.y;
+            auto tw = calTowards(man_x_, man_y_, x, y);
+            if (tw != Towards_None)
+            {
+                towards_ = tw;
+            }
+            tryWalk(x, y);
+            way_que_.pop_back();
+            if (way_que_.empty() && mouse_event_x_ >= 0 && mouse_event_y_ >= 0)
+            {
+                towards_ = calTowards(man_x_, man_y_, mouse_event_x_, mouse_event_y_);
+                if (checkEntrance(mouse_event_x_, mouse_event_y_))
+                {
+                    way_que_.clear();
+                    setMouseEventPoint(-1, -1);
+                }
             }
         }
     }
-
     calCursorPosition(man_x_, man_y_);
 
-    //Êó±êÑ°Â·
+    //é¼ æ ‡å¯»è·¯
     if (e.type == BP_MOUSEBUTTONUP && e.button.button == BP_BUTTON_LEFT)
     {
         setMouseEventPoint(-1, -1);
-        Point p = getMousePosition(e.button.x, e.button.y, x, y);
+        int mx, my;
+        Engine::getInstance()->getMouseStateInStartWindow(mx, my);
+        Point p = getMousePosition(mx, my, x, y);
         way_que_.clear();
         if (canWalk(p.x, p.y) /* && !isOutScreen(p.x, p.y)*/)
         {
             FindWay(x, y, p.x, p.y);
         }
-        //Èç¹ûÊÇ½¨Öş£¬ÔÚ´Ë½¨ÖşµÄ¸½½üÊÔÍ¼²éÕÒÈë¿Ú
+        //å¦‚æœæ˜¯å»ºç­‘ï¼Œåœ¨æ­¤å»ºç­‘çš„é™„è¿‘è¯•å›¾æŸ¥æ‰¾å…¥å£
         if (isBuilding(p.x, p.y))
         {
             int buiding_x = build_x_layer_.data(p.x, p.y);
@@ -322,7 +350,7 @@ void MainScene::dealEvent(BP_Event& e)
                     if (build_x_layer_.data(ix, iy) == buiding_x && build_y_layer_.data(ix, iy) == buiding_y && checkEntrance(ix, iy, true))
                     {
                         p.x = ix;
-                        p.y = iy;    //pµÄÖµ±ä»¯ÁË
+                        p.y = iy;    //pçš„å€¼å˜åŒ–äº†
                         found_entrance = true;
                         break;
                     }
@@ -334,7 +362,7 @@ void MainScene::dealEvent(BP_Event& e)
             }
             if (found_entrance)
             {
-                //ÔÚÈë¿ÚËÄÖÜ²éÕÒÒ»¸ö¿ÉÒÔ×ßµ½µÄµØ·½
+                //åœ¨å…¥å£å››å‘¨æŸ¥æ‰¾ä¸€ä¸ªå¯ä»¥èµ°åˆ°çš„åœ°æ–¹
                 std::vector<Point> ps;
                 if (canWalk(p.x - 1, p.y))
                 {
@@ -371,7 +399,7 @@ void MainScene::onEntrance()
     //{
     //    forceEnterSubScene(force_submap_, force_submap_x_, force_submap_y_);
     //}
-    //Ò»´ó¿éµØÃæµÄÎÆÀí
+    //ä¸€å¤§å—åœ°é¢çš„çº¹ç†
     //earth_texture_ = Engine::getInstance()->createARGBRenderedTexture(COORD_COUNT * TILE_W * 2, COORD_COUNT * TILE_H * 2);
 }
 
@@ -381,7 +409,6 @@ void MainScene::onExit()
 
 void MainScene::onPressedCancel()
 {
-    UI::getInstance()->run();
 }
 
 void MainScene::tryWalk(int x, int y)
@@ -406,8 +433,16 @@ void MainScene::tryWalk(int x, int y)
     rest_time_ = 0;
 }
 
+void MainScene::setEntrance()
+{
+}
+
 bool MainScene::isBuilding(int x, int y)
 {
+    if (isOutLine(x, y))
+    {
+        return false;
+    }
     return (building_layer_.data(build_x_layer_.data(x, y), build_y_layer_.data(x, y)).getTexture() != nullptr);
 }
 
@@ -416,10 +451,15 @@ int MainScene::isWater(int x, int y)
     return earth_layer_.data(x, y).material_ == ObjectMaterial::Water;
 }
 
+bool MainScene::isOutScreen(int x, int y)
+{
+    return (abs(man_x_ - x) >= 2 * view_width_region_ || abs(man_y_ - y) >= view_sum_region_);
+}
+
 bool MainScene::canWalk(int x, int y)
 {
-    //ÕâÀï²»ĞèÒª¼Ó£¬Êµ¼ÊÉÏÈë¿Ú¶¼ÊÇÎŞ·¨×ßµ½µÄ
-    if (isOutLine(x, y) || isBuilding(x, y))// || isWater(x, y))
+    //è¿™é‡Œä¸éœ€è¦åŠ ï¼Œå®é™…ä¸Šå…¥å£éƒ½æ˜¯æ— æ³•èµ°åˆ°çš„
+    if (isOutLine(x, y) || isBuilding(x, y))    // || isWater(x, y))
     {
         return false;
     }
@@ -443,7 +483,7 @@ bool MainScene::checkEntrance(int x, int y, bool only_check /*= false*/)
             }
             else if (s->EntranceCondition == 2)
             {
-                //×¢Òâ½øÈëÌõ¼ş2µÄÉè¶¨
+                //æ³¨æ„è¿›å…¥æ¡ä»¶2çš„è®¾å®š
                 for (auto r : Save::getInstance()->Team)
                 {
                     if (Save::getInstance()->getRole(r)->Speed >= 70)
@@ -460,9 +500,9 @@ bool MainScene::checkEntrance(int x, int y, bool only_check /*= false*/)
             if (can_enter)
             {
                 UISave::autoSave();
-                //ÕâÀï¿´ÆğÀ´ÒªÖ÷¶¯¶à»­Ò»Ö¡£¬´ıĞŞ
+                //è¿™é‡Œçœ‹èµ·æ¥è¦ä¸»åŠ¨å¤šç”»ä¸€å¸§ï¼Œå¾…ä¿®
                 drawAndPresent();
-                auto sub_map =  std::make_shared<SubScene>(i);
+                auto sub_map = std::make_shared<SubScene>(i);
                 sub_map->setManViewPosition(s->EntranceX, s->EntranceY);
                 sub_map->run();
                 towards_ = sub_map->towards_;
@@ -519,13 +559,4 @@ void MainScene::setWeather()
             }
         }
     }
-}
-
-void MainScene::setEntrance()
-{
-}
-
-bool MainScene::isOutScreen(int x, int y)
-{
-    return (abs(man_x_ - x) >= 2 * view_width_region_ || abs(man_y_ - y) >= view_sum_region_);
 }

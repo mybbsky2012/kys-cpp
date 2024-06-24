@@ -22,9 +22,6 @@
     <ClCompile Include="Audio.cpp">
       <Filter>engine</Filter>
     </ClCompile>
-    <ClCompile Include="Engine.cpp">
-      <Filter>engine</Filter>
-    </ClCompile>
     <ClCompile Include="UI.cpp">
       <Filter>ui</Filter>
     </ClCompile>
@@ -61,9 +58,6 @@
     <ClCompile Include="Cloud.cpp">
       <Filter>scene</Filter>
     </ClCompile>
-    <ClCompile Include="Font.cpp">
-      <Filter>ui</Filter>
-    </ClCompile>
     <ClCompile Include="MainScene.cpp">
       <Filter>scene</Filter>
     </ClCompile>
@@ -84,12 +78,6 @@
     </ClCompile>
     <ClCompile Include="GameUtil.cpp">
       <Filter>util</Filter>
-    </ClCompile>
-    <ClCompile Include="Types.cpp">
-      <Filter>util</Filter>
-    </ClCompile>
-    <ClCompile Include="PotConv.cpp">
-      <Filter>engine</Filter>
     </ClCompile>
     <ClCompile Include="RandomRole.cpp">
       <Filter>ui</Filter>
@@ -154,20 +142,44 @@
     <ClCompile Include="Object.cpp">
       <Filter>chemistry</Filter>
     </ClCompile>
-    <ClCompile Include="RunNode.cpp">
-      <Filter>util</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\convert.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\File.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
     <ClCompile Include="..\others\Hanz2Piny.cpp">
       <Filter>hanzi2pinyin</Filter>
     </ClCompile>
-    <ClCompile Include="..\others\zip.c">
-      <Filter>zip</Filter>
+    <ClCompile Include="BattleSceneHades.cpp">
+      <Filter>battle</Filter>
+    </ClCompile>
+    <ClCompile Include="Font.cpp">
+      <Filter>font</Filter>
+    </ClCompile>
+    <ClCompile Include="Types.cpp">
+      <Filter>types</Filter>
+    </ClCompile>
+    <ClCompile Include="RunNode.cpp">
+      <Filter>runnode</Filter>
+    </ClCompile>
+    <ClCompile Include="UIKeyConfig.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="DrawNode.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mlcc\PotConv.cpp">
+      <Filter>mlcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mlcc\strfunc.cpp">
+      <Filter>mlcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mlcc\filefunc.cpp">
+      <Filter>mlcc</Filter>
+    </ClCompile>
+    <ClCompile Include="RunNodeFromJson.cpp">
+      <Filter>runnode</Filter>
+    </ClCompile>
+    <ClCompile Include="BattleSceneSekiro.cpp">
+      <Filter>battle</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine.cpp">
+      <Filter>engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -204,9 +216,6 @@
     <ClInclude Include="Button.h">
       <Filter>ui</Filter>
     </ClInclude>
-    <ClInclude Include="Font.h">
-      <Filter>ui</Filter>
-    </ClInclude>
     <ClInclude Include="Head.h">
       <Filter>ui</Filter>
     </ClInclude>
@@ -222,13 +231,7 @@
     <ClInclude Include="GameUtil.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="Types.h">
-      <Filter>util</Filter>
-    </ClInclude>
     <ClInclude Include="Audio.h">
-      <Filter>engine</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine.h">
       <Filter>engine</Filter>
     </ClInclude>
     <ClInclude Include="MainScene.h">
@@ -268,9 +271,6 @@
       <Filter>ui</Filter>
     </ClInclude>
     <ClInclude Include="TextureManager.h">
-      <Filter>engine</Filter>
-    </ClInclude>
-    <ClInclude Include="PotConv.h">
       <Filter>engine</Filter>
     </ClInclude>
     <ClInclude Include="Talk.h">
@@ -327,44 +327,58 @@
     <ClInclude Include="Object.h">
       <Filter>chemistry</Filter>
     </ClInclude>
-    <ClInclude Include="RunNode.h">
-      <Filter>util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\convert.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\File.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\INIReader.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Random.h">
-      <Filter>common</Filter>
-    </ClInclude>
     <ClInclude Include="..\others\Hanz2Piny.h">
       <Filter>hanzi2pinyin</Filter>
     </ClInclude>
-    <ClInclude Include="..\others\zip.h">
-      <Filter>zip</Filter>
-    </ClInclude>
-    <ClInclude Include="..\others\miniz.h">
-      <Filter>zip</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>_Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="BattleSceneHades.h">
+      <Filter>battle</Filter>
+    </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>font</Filter>
+    </ClInclude>
+    <ClInclude Include="Types.h">
+      <Filter>types</Filter>
+    </ClInclude>
+    <ClInclude Include="RunNode.h">
+      <Filter>runnode</Filter>
+    </ClInclude>
+    <ClInclude Include="UIKeyConfig.h">
+      <Filter>ui</Filter>
+    </ClInclude>
+    <ClInclude Include="DrawNode.h">
+      <Filter>ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mlcc\fmt1.h">
+      <Filter>mlcc</Filter>
+    </ClInclude>
+    <ClInclude Include="RunNodeFromJson.h">
+      <Filter>runnode</Filter>
+    </ClInclude>
+    <ClInclude Include="BattleSceneSekiro.h">
+      <Filter>battle</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mlcc\filefunc.h">
+      <Filter>mlcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mlcc\INIReader.h">
+      <Filter>mlcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mlcc\PotConv.h">
+      <Filter>mlcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mlcc\strfunc.h">
+      <Filter>mlcc</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine.h">
+      <Filter>engine</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="_Resources">
       <UniqueIdentifier>{7ab4a26b-b9ce-4c3e-84a0-221cbbc561bf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="headers">
-      <UniqueIdentifier>{b73723e8-c4d0-44c3-98c8-bbbe7cf111ca}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="common">
-      <UniqueIdentifier>{52c8cf7c-440e-4bd0-ad8e-5f6f1a23576a}</UniqueIdentifier>
     </Filter>
     <Filter Include="util">
       <UniqueIdentifier>{3c678943-dbdf-4d4f-a01c-0c5b1e6321a6}</UniqueIdentifier>
@@ -394,17 +408,27 @@
       <UniqueIdentifier>{793a596f-160e-4c8e-8736-a848783c7a88}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="battle-mod">
-      <UniqueIdentifier>{766ecc17-3c46-4d31-9b42-c4deb6299f25}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="hanzi2pinyin">
-      <UniqueIdentifier>{36f35be4-3d2e-449c-a190-2d755a70d4bb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="zip">
       <UniqueIdentifier>{6d628cf8-dd04-4c2b-ab7f-7ac40cd54b8f}</UniqueIdentifier>
     </Filter>
     <Filter Include="chemistry">
       <UniqueIdentifier>{035dc8b6-d3ba-46b1-9302-e7cdbc2c3b18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="font">
+      <UniqueIdentifier>{8aa821af-94ac-4543-89e2-43d37b3fa90c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hanzi2pinyin">
+      <UniqueIdentifier>{36f35be4-3d2e-449c-a190-2d755a70d4bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="types">
+      <UniqueIdentifier>{b73723e8-c4d0-44c3-98c8-bbbe7cf111ca}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="runnode">
+      <UniqueIdentifier>{766ecc17-3c46-4d31-9b42-c4deb6299f25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mlcc">
+      <UniqueIdentifier>{52c8cf7c-440e-4bd0-ad8e-5f6f1a23576a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

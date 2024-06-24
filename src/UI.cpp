@@ -1,11 +1,11 @@
 #include "UI.h"
-#include "Font.h"
 #include "GameUtil.h"
+#include "Head.h"
 #include "Save.h"
 
 UI::UI()
 {
-    //×¢Òâ£¬´Ë´¦Ô¼¶¨childs_[0]Îª×ÓUI£¬´´½¨ºÃ¶ÔÓ¦µÄÖ¸Õë£¬ĞèÒªÏÔÊ¾ÄÄ¸ö¸³Öµµ½childs_[0]¼´¿É
+    //æ³¨æ„ï¼Œæ­¤å¤„çº¦å®šchilds_[0]ä¸ºå­UIï¼Œåˆ›å»ºå¥½å¯¹åº”çš„æŒ‡é’ˆï¼Œéœ€è¦æ˜¾ç¤ºå“ªä¸ªèµ‹å€¼åˆ°childs_[0]å³å¯
     ui_status_ = std::make_shared<UIStatus>();
     ui_item_ = std::make_shared<UIItem>();
     ui_system_ = std::make_shared<UISystem>();
@@ -14,7 +14,7 @@ UI::UI()
     ui_system_->setPosition(300, 0);
     addChild(ui_status_);
 
-    //Ã²ËÆÕâÀï²»ÄÜÖ±½Óµ÷ÓÃÆäËûµ¥Àı£¬¾²Ì¬Á¿µÄ´´½¨Ë³Ğò²»È·¶¨
+    //è²Œä¼¼è¿™é‡Œä¸èƒ½ç›´æ¥è°ƒç”¨å…¶ä»–å•ä¾‹ï¼Œé™æ€é‡çš„åˆ›å»ºé¡ºåºä¸ç¡®å®š
     button_status_ = std::make_shared<Button>();
     button_status_->setTexture("title", 122);
     button_item_ = std::make_shared<Button>();
@@ -30,9 +30,9 @@ UI::UI()
     {
         heads_->addChild(std::make_shared<Head>(), 20, 60 + i * 90);
     }
-    heads_->getChild(0)->setState(Pass);
+    heads_->getChild(0)->setState(NodePass);
     //addChild(heads_);
-    result_ = -1;    //·Ç¸º£ºÎïÆ·id£¬¸ºÊı£ºÆäËûÇé¿ö£¬ÔÙ¶¨
+    result_ = -1;    //éè´Ÿï¼šç‰©å“idï¼Œè´Ÿæ•°ï¼šå…¶ä»–æƒ…å†µï¼Œå†å®š
 }
 
 UI::~UI()
@@ -59,13 +59,13 @@ void UI::dealEvent(BP_Event& e)
         {
             continue;
         }
-        if (head->getState() == Pass)
+        if (head->getState() == NodePass)
         {
             ui_status_->setRole(role);
             current_head_ = i;
         }
         head->setText("");
-        //ÈçÔÚÎïÆ·À¸ÔòÅĞ¶ÏÊÇ·ñÔÚÊ¹ÓÃ£¬»òÕß¿ÉÒÔÊ¹ÓÃ£¬ÉèÖÃ¶ÔÓ¦µÄÍ·Ïñ×´Ì¬
+        //å¦‚åœ¨ç‰©å“æ åˆ™åˆ¤æ–­æ˜¯å¦åœ¨ä½¿ç”¨ï¼Œæˆ–è€…å¯ä»¥ä½¿ç”¨ï¼Œè®¾ç½®å¯¹åº”çš„å¤´åƒçŠ¶æ€
         if (childs_[0] == ui_item_)
         {
             Item* item = ui_item_->getCurrentItem();
@@ -73,53 +73,83 @@ void UI::dealEvent(BP_Event& e)
             {
                 if (role->Equip0 == item->ID || role->Equip1 == item->ID || role->PracticeItem == item->ID)
                 {
-                    head->setText("Ê¹ÓÃÖĞ");
-                    //Font::getInstance()->draw("Ê¹ÓÃÖĞ", 25, x + 5, y + 60, { 255,255,255,255 });
+                    head->setText("ä½¿ç”¨ä¸­");
+                    //Font::getInstance()->draw("ä½¿ç”¨ä¸­", 25, x + 5, y + 60, { 255,255,255,255 });
                 }
-                if (GameUtil::canUseItem(role, item))
+                if (role->canUseItem(item))
                 {
-                    head->setState(Pass);
+                    head->setState(NodePass);
                 }
             }
         }
     }
 
-    //ÕâÀïÉè¶¨µ±Ç°Í·ÏñÎªPass£¬ÁîÆä²»±ä°µ£¬ÒòÎª¼ì²âÊÂ¼şÊÇÏÈ¼ì²â×Ó½Úµã£¬ËùÒÔÕâÀï¿ÉÒÔÉúĞ§
+    //è¿™é‡Œè®¾å®šå½“å‰å¤´åƒä¸ºPassï¼Œä»¤å…¶ä¸å˜æš—ï¼Œå› ä¸ºæ£€æµ‹äº‹ä»¶æ˜¯å…ˆæ£€æµ‹å­èŠ‚ç‚¹ï¼Œæ‰€ä»¥è¿™é‡Œå¯ä»¥ç”Ÿæ•ˆ
     if (childs_[0] == ui_status_)
     {
-        heads_->getChild(current_head_)->setState(Pass);
+        heads_->getChild(current_head_)->setState(NodePass);
     }
-    childs_[current_button_]->setState(Pass);
+    childs_[current_button_]->setState(NodePass);
 
-    //¿ì½İ¼üÇĞ»»
-    if (e.type == BP_KEYUP)
+    //å¿«æ·é”®åˆ‡æ¢
     {
-        switch (e.key.keysym.sym)
+        int cb = current_button_;
+        if (e.type == BP_KEYUP)
         {
-        case BPK_1:
-            childs_[0] = ui_status_;
-            setAllChildState(Normal);
-            button_status_->setState(Press);
-            current_button_ = 0;
-            break;
-        case BPK_2:
-            childs_[0] = ui_item_;
-            setAllChildState(Normal);
-            button_item_->setState(Press);
-            current_button_ = 1;
-            break;
-        case BPK_3:
-            childs_[0] = ui_system_;
-            setAllChildState(Normal);
-            button_system_->setState(Press);
-            current_button_ = 2;
-            break;
-        default:
-            break;
+            switch (e.key.keysym.sym)
+            {
+            case BPK_1:
+                cb = 0;
+                break;
+            case BPK_2:
+                cb = 1;
+                break;
+            case BPK_3:
+                cb = 2;
+                break;
+            default:
+                break;
+            }
+        }
+
+        if (e.type == BP_CONTROLLERAXISMOTION)
+        {
+            if (e.caxis.axis == BP_CONTROLLER_AXIS_TRIGGERLEFT && e.caxis.value == 0)
+            {
+                cb = GameUtil::limit(cb - 1, 0, 3);
+            }
+            if (e.caxis.axis == BP_CONTROLLER_AXIS_TRIGGERRIGHT && e.caxis.value == 0)
+            {
+                cb = GameUtil::limit(cb + 1, 0, 3);
+            }
+        }
+        if (cb != current_button_)
+        {
+            current_button_ = cb;
+            switch (current_button_)
+            {
+            case 0:
+                childs_[0] = ui_status_;
+                setAllChildState(NodeNormal);
+                button_status_->setState(NodePress);
+                break;
+            case 1:
+                childs_[0] = ui_item_;
+                setAllChildState(NodeNormal);
+                button_item_->setState(NodePress);
+                break;
+            case 2:
+                childs_[0] = ui_system_;
+                setAllChildState(NodeNormal);
+                button_system_->setState(NodePress);
+                break;
+            default:
+                break;
+            }
         }
     }
 
-    //½öÔÚ×´Ì¬²¿·Ö£¬×ó²àÍ·Ïñ²Å½ÓÊÕÊÂ¼ş
+    //ä»…åœ¨çŠ¶æ€éƒ¨åˆ†ï¼Œå·¦ä¾§å¤´åƒæ‰æ¥æ”¶äº‹ä»¶
     if (childs_[0] == ui_status_)
     {
         heads_->setDealEvent(1);
@@ -132,13 +162,14 @@ void UI::dealEvent(BP_Event& e)
 
 void UI::onPressedOK()
 {
-    //ÕâÀï¼ì²âÊÇ·ñÊ¹ÓÃÁËÎïÆ·£¬·µ»ØÎïÆ·µÄid
+    //è¿™é‡Œæ£€æµ‹æ˜¯å¦ä½¿ç”¨äº†ç‰©å“ï¼Œè¿”å›ç‰©å“çš„id
     if (childs_[0] == ui_item_)
     {
         auto item = ui_item_->getCurrentItem();
         if (item && item->ItemType == 0)
         {
             setExit(true);
+            return;
         }
     }
 
@@ -147,23 +178,25 @@ void UI::onPressedOK()
         if (ui_system_->getResult() == 0)
         {
             setExit(true);
+            return;
         }
     }
 
-    //ËÄ¸ö°´Å¥µÄÏìÓ¦
-    if (button_status_->getState() == Press)
+    //æŒ‰é’®çš„å“åº”
+    if (button_status_->getState() == NodePress)
     {
         childs_[0] = ui_status_;
         current_button_ = button_status_->getTag();
     }
-    if (button_item_->getState() == Press)
+    if (button_item_->getState() == NodePress)
     {
         childs_[0] = ui_item_;
         current_button_ = button_item_->getTag();
     }
-    if (button_system_->getState() == Press)
+    if (button_system_->getState() == NodePress)
     {
         childs_[0] = ui_system_;
         current_button_ = button_system_->getTag();
     }
+    //current_button_ = childs_[0]->getTag();
 }

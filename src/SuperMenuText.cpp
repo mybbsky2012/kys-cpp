@@ -2,7 +2,6 @@
 #include "../others/Hanz2Piny.h"
 #include "OpenCCConverter.h"
 #include "PotConv.h"
-#include "convert.h"
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -10,20 +9,20 @@
 SuperMenuText::SuperMenuText(const std::string& title, int font_size, const std::vector<std::pair<int, std::string>>& allItems, int itemsPerPage) : InputBox(title, font_size), items_(allItems), itemsPerPage_(itemsPerPage)
 {
     previous_ = std::make_shared<Button>();
-    previous_->setText("ÉÏÒ»í“PgUp");
+    previous_->setText("ä¸Šä¸€é PgUp");
     next_ = std::make_shared<Button>();
-    next_->setText("ÏÂÒ»í“PgDown");
+    next_->setText("ä¸‹ä¸€é PgDown");
 
     addChild(previous_);
     addChild(next_);
     selections_ = std::make_shared<MenuText>();
     addChild(selections_);
-    setAllChildState(Normal);
+    setAllChildState(NodeNormal);
     defaultPage();
 
     std::function<bool(const std::string&, const std::string&)> match = [&](const std::string& text, const std::string& name) -> bool
     {
-        std::string pinyin = Hanz2Piny::hanz2pinyin(PotConv::cp936toutf8(name));
+        std::string pinyin = Hanz2Piny::hanz2pinyin(name);
         int p = 0;
         for (int i = 0; i < text.size(); i++)
         {
@@ -39,10 +38,10 @@ SuperMenuText::SuperMenuText(const std::string& title, int font_size, const std:
     setMatchFunction(match);
     for (const auto& pairName : items_)
     {
-        //// Æ´Òô
+        //// æ‹¼éŸ³
         //auto u8Name = PotConv::cp936toutf8(pairName.second);
         //std::string pinyin = Hanz2Piny::hanz2pinyin(u8Name);
-        //auto pys = convert::splitString(pinyin, " ");
+        //auto pys = strfunc::splitString(pinyin, " ");
         //std::vector<std::string> acceptables;
 
         //std::function<void(const std::string& curStr, int idx)> comboGenerator = [&](const std::string& curStr, int idx)
@@ -65,13 +64,13 @@ SuperMenuText::SuperMenuText(const std::string& title, int font_size, const std:
         //    }
         //}
 
-        //// Ö±½Ó¶Ô×Ö£¬¿ÉÒÔÁ½¸öÌø£¬µ«ÊÇ²»¹ÜÁË
+        //// ç›´æ¥å¯¹å­—ï¼Œå¯ä»¥ä¸¤ä¸ªè·³ï¼Œä½†æ˜¯ä¸ç®¡äº†
         //for (int i = 0; i < pairName.second.size(); i++)
         //{
         //    matches_[pairName.second.substr(0, i + 1)].insert(pairName.second);
         //}
 
-        // ¶Ôid
+        // å¯¹id
         std::string strID = std::to_string(pairName.first);
         for (int i = 0; i < strID.size(); i++)
         {
@@ -102,7 +101,9 @@ void SuperMenuText::setMatchFunction(std::function<bool(const std::string&, cons
 void SuperMenuText::defaultPage()
 {
     if (curDefault_)
-    { return; }
+    {
+        return;
+    }
     std::vector<std::string> displays;
     searchResultIndices_.clear();
     for (int i = 0; i < items_.size(); i++)
@@ -118,7 +119,9 @@ void SuperMenuText::defaultPage()
     updateMaxPages();
     selections_->setStrings(displays);
     if (displays.size() != 0)
-    { selections_->forceActiveChild(0); }
+    {
+        selections_->forceActiveChild(0);
+    }
     curDefault_ = true;
 }
 
@@ -126,7 +129,7 @@ void SuperMenuText::flipPage(int pInc)
 {
     if (curPage_ + pInc >= 0 && curPage_ + pInc < maxPages_)
     {
-        // ÔÊĞíÄã·­Ò³£¡
+        // å…è®¸ä½ ç¿»é¡µï¼
         curPage_ += pInc;
         int startIdx = curPage_ * itemsPerPage_;
         std::vector<std::string> displays;
@@ -148,7 +151,9 @@ bool SuperMenuText::defaultMatch(const std::string& input, const std::string& na
     {
         auto iterName = iterInput->second.find(name);
         if (iterName != iterInput->second.end())
-        { return true; }
+        {
+            return true;
+        }
     }
     return false;
 }
@@ -158,8 +163,8 @@ void SuperMenuText::search(const std::string& text)
     std::vector<std::string> results;
     activeIndices_.clear();
     searchResultIndices_.clear();
-    // Ö»·µ»ØitemsPerPage_ÊıÁ¿
-    // ¸ü¸ß¼¶µÄTrie£¬LCS±à¼­¾àÀëµÈµÈ ÓĞÔµÈËÀ´¸ã
+    // åªè¿”å›itemsPerPage_æ•°é‡
+    // æ›´é«˜çº§çš„Trieï¼ŒLCSç¼–è¾‘è·ç¦»ç­‰ç­‰ æœ‰ç¼˜äººæ¥æ
     for (int i = 0; i < items_.size(); i++)
     {
         bool matched = false;
@@ -196,28 +201,28 @@ void SuperMenuText::updateMaxPages()
 
 void SuperMenuText::dealEvent(BP_Event& e)
 {
-    // get²»µ½result ÎªºÎ
-    // ²»ÖªµÀÕâÍæÒâ¶ùÔÚ¸ÉÂï£¬Ï¹¸ã¼´¿É
-    if (previous_->getState() == Press && e.type == BP_MOUSEBUTTONUP)
+    // getä¸åˆ°result ä¸ºä½•
+    // ä¸çŸ¥é“è¿™ç©æ„å„¿åœ¨å¹²å˜›ï¼Œçæå³å¯
+    if (previous_->getState() == NodePress && e.type == BP_MOUSEBUTTONUP)
     {
         flipPage(-1);
-        previous_->setState(Normal);
+        previous_->setState(NodeNormal);
         previous_->setResult(-1);
     }
-    else if (next_->getState() == Press && e.type == BP_MOUSEBUTTONUP)
+    else if (next_->getState() == NodePress && e.type == BP_MOUSEBUTTONUP)
     {
         flipPage(1);
-        next_->setState(Normal);
+        next_->setState(NodeNormal);
         next_->setResult(-1);
     }
 
     bool research = false;
-    // ÎªÊ²Ã´switch×Ô¶¯Ëõ½øÊÇÕâÑù
+    // ä¸ºä»€ä¹ˆswitchè‡ªåŠ¨ç¼©è¿›æ˜¯è¿™æ ·
     switch (e.type)
     {
     case BP_TEXTINPUT:
     {
-        auto converted = OpenCCConverter::getInstance()->convertUTF8(e.text.text);
+        auto converted = OpenCCConverter::getInstance()->UTF8s2t(e.text.text);
         converted = PotConv::conv(converted, "utf-8", "cp936");
         text_ += converted;
         research = true;
@@ -306,7 +311,9 @@ void SuperMenuText::dealEvent(BP_Event& e)
         auto selected = selections_->getResultString();
         result_ = activeIndices_[selections_->getResult()];
         if (result_ >= 0)
-        { result_ = items_[result_].first; }
+        {
+            result_ = items_[result_].first;
+        }
         setExit(true);
     }
 }

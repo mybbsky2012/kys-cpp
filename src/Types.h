@@ -1,14 +1,10 @@
-#pragma once
-#include "Engine.h"
+ï»¿#pragma once
+#include "Point.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 using MAP_INT = int16_t;
-
-#ifdef _MSC_VER
-#define printf printf_s
-//#define fopen fopen_s
-#endif
 
 template <typename T>
 struct MapSquare
@@ -22,7 +18,7 @@ struct MapSquare
             delete[] data_;
         }
     }
-    //²»»á±£ÁôÔ­Ê¼Êı¾İ
+    //ä¸ä¼šä¿ç•™åŸå§‹æ•°æ®
     void resize(int x)
     {
         if (data_)
@@ -66,7 +62,7 @@ private:
 
 using MapSquareInt = MapSquare<MAP_INT>;
 
-//Ç°ÖÃÉùÃ÷
+//å‰ç½®å£°æ˜
 struct Role;
 struct Item;
 struct Magic;
@@ -79,9 +75,9 @@ enum
     SUBMAP_COORD_COUNT = 64,
     SUBMAP_LAYER_COUNT = 6,
     MAINMAP_COORD_COUNT = 480,
-    SUBMAP_EVENT_COUNT = 200,    //µ¥³¡¾°×î´óÊÂ¼şÊı
-    ITEM_IN_BAG_COUNT = 200,     //×î´óÎïÆ·Êı
-    TEAMMATE_COUNT = 6,          //×î´ó¶ÓÎéÈËÔ±Êı
+    SUBMAP_EVENT_COUNT = 200,    //å•åœºæ™¯æœ€å¤§äº‹ä»¶æ•°
+    ITEM_IN_BAG_COUNT = 1000,    //æœ€å¤§ç‰©å“æ•°
+    TEAMMATE_COUNT = 6,          //æœ€å¤§é˜Ÿä¼äººå‘˜æ•°
 };
 
 enum
@@ -98,22 +94,49 @@ enum
     SHOP_ITEM_COUNT = 5,
 };
 
-//³ÉÔ±º¯ÊıÈôÊÇ¿ªÍ·´óĞ´£¬²¢ÇÒÎŞÏÂ»®Ïß£¬Ôò¿ÉÒÔÖ±½Ó·ÃÎÊ²¢ĞŞ¸Ä
+enum class ActType_t : int
+{
+    None = -1,
+    Medcine,
+    Fist,
+    Sword,
+    Knife,
+    Unusual,
+};
 
-//´æµµÖĞµÄ½ÇÉ«Êı¾İ
+enum class OperationType_t : int
+{
+    None = -1,
+    Light,
+    Heavy,
+    Long,
+    Slash,
+    Item,
+};
+
+using AT = ActType_t;
+using OT = OperationType_t;
+
+//æˆå‘˜å‡½æ•°è‹¥æ˜¯å¼€å¤´å¤§å†™ï¼Œå¹¶ä¸”æ— ä¸‹åˆ’çº¿ï¼Œåˆ™å¯ä»¥ç›´æ¥è®¿é—®å¹¶ä¿®æ”¹
+
+//å­˜æ¡£ä¸­çš„è§’è‰²æ•°æ®
 struct RoleSave
 {
 public:
     int ID;
     int HeadID, IncLife, UnUse;
     char Name[20], Nick[20];
-    int Sexual;    //ĞÔ±ğ 0-ÄĞ 1 Å® 2 ÆäËû
+    int Sexual;    //æ€§åˆ« 0-ç”· 1 å¥³ 2 å…¶ä»–
     int Level;
     int Exp;
     int HP, MaxHP, Hurt, Poison, PhysicalPower;
     int ExpForMakeItem;
     int Equip0, Equip1;
-    int Frame[15];    //¶¯×÷Ö¡Êı£¬¸ÄÎª²»ÔÚ´Ë´¦±£´æ£¬¹ÊÊµ¼ÊÎŞÓÃ£¬ÁíÍâÑÓ³ÙÖ¡Êı¶ÔĞ§¹û¼¸ºõÎŞÓ°Ïì£¬·ÏÆú
+    //int Frame[15];    //åŠ¨ä½œå¸§æ•°ï¼Œæ”¹ä¸ºä¸åœ¨æ­¤å¤„ä¿å­˜ï¼Œæ•…å®é™…æ— ç”¨ï¼Œå¦å¤–å»¶è¿Ÿå¸§æ•°å¯¹æ•ˆæœå‡ ä¹æ— å½±å“ï¼ŒåºŸå¼ƒ
+    int EquipMagic[4];     //è£…å¤‡æ­¦å­¦
+    int EquipMagic2[4];    //è£…å¤‡è¢«åŠ¨æ­¦å­¦
+    int EquipItem;         //è£…å¤‡ç‰©å“
+    int Frame[6];          //å¸§æ•°ï¼Œç°ä»…ç”¨äºå ä½
     int MPType, MP, MaxMP;
     int Attack, Speed, Defence, Medicine, UsePoison, Detoxification, AntiPoison, Fist, Sword, Knife, Unusual, HiddenWeapon;
     int Knowledge, Morality, AttackWithPoison, AttackTwice, Fame, IQ;
@@ -123,36 +146,40 @@ public:
     int TakingItem[ROLE_TAKING_ITEM_COUNT], TakingItemCount[ROLE_TAKING_ITEM_COUNT];
 };
 
-//Êµ¼ÊµÄ½ÇÉ«Êı¾İ£¬»ùÀàÖ®ÍâµÄÍ¨³£ÊÇÕ½¶·ÊôĞÔ
+//å®é™…çš„è§’è‰²æ•°æ®ï¼ŒåŸºç±»ä¹‹å¤–çš„é€šå¸¸æ˜¯æˆ˜æ–—å±æ€§
 struct Role : public RoleSave
 {
 public:
-    int Team;
-    int FaceTowards, Dead, Step;
-    int Pic, BattleSpeed;
-    int ExpGot, Auto;
+    int Team = 0;
+    int FaceTowards = 0, Dead = 0, Step = 0;
+    int Pic = 0, BattleSpeed = 0;
+    int ExpGot = 0, Auto = 0;
     int FightFrame[5] = { -1 };
-    int FightingFrame;
-    int Moved, Acted;
-    int ActTeam;    //Ñ¡ÔñĞĞ¶¯ÕóÓª 0-ÎÒ·½£¬1-·ÇÎÒ·½£¬»­Ğ§¹û²ãÊ±ÓĞĞ§
+    int FightingFrame = 0;
+    int Moved = 0, Acted = 0;
+    int ActTeam = 0;    //é€‰æ‹©è¡ŒåŠ¨é˜µè¥ 0-æˆ‘æ–¹ï¼Œ1-éæˆ‘æ–¹ï¼Œç”»æ•ˆæœå±‚æ—¶æœ‰æ•ˆ
 
-    int SelectedMagic;
+    int SelectedMagic = -1;
 
-    int Progress;
+    int Progress = 0;
 
     struct ShowString
     {
+        struct Color_t
+        {
+            uint8_t r, g, b, a;
+        };
         std::string Text;
-        BP_Color Color;
-        int Size;
+        Color_t Color;
+        int Size = 0;
     };
-    //ÏÔÊ¾ÎÄ×ÖĞ§¹ûÊ¹ÓÃ
+    //æ˜¾ç¤ºæ–‡å­—æ•ˆæœä½¿ç”¨
     struct ActionShowInfo
     {
         std::vector<ShowString> ShowStrings;
-        int BattleHurt;
-        int ProgressChange;
-        int Effect;
+        int BattleHurt = 0;
+        int ProgressChange = 0;
+        int Effect = -1;
         ActionShowInfo()
         {
             clear();
@@ -168,8 +195,8 @@ public:
     ActionShowInfo Show;
 
 private:
-    int X_, Y_;
-    int prevX_, prevY_;
+    int X_ = 0, Y_ = 0;
+    int prevX_ = 0, prevY_ = 0;
 
 public:
     MapSquare<Role*>* position_layer_ = nullptr;
@@ -189,7 +216,7 @@ public:
     int X() { return X_; }
     int Y() { return Y_; }
 
-    //´øroleµÄ£¬±íÊ¾ºóÃæµÄ²ÎÊıÊÇÈËÎïÎä¹¦À¸
+    //å¸¦roleçš„ï¼Œè¡¨ç¤ºåé¢çš„å‚æ•°æ˜¯äººç‰©æ­¦åŠŸæ 
     int getRoleShowLearnedMagicLevel(int i);
     int getRoleMagicLevelIndex(int i);
 
@@ -197,6 +224,9 @@ public:
     int getMagicLevelIndex(Magic* magic);
     int getMagicLevelIndex(int magic_id);
     int getMagicOfRoleIndex(Magic* magic);
+    int getEquipMagicOfRoleIndex(Magic* magic);
+
+    std::vector<Magic*> getLearnedMagics();
 
     void limit();
 
@@ -205,22 +235,52 @@ public:
 
     bool isAuto() { return Auto != 0 || Team != 0; }
 
-    void addShowString(std::string text, BP_Color color = { 255, 255, 255, 255 }, int size = 28) { Show.ShowStrings.push_back({ text, color, size }); }
+    void addShowString(std::string text, ShowString::Color_t color = { 255, 255, 255, 255 }, int size = 28) { Show.ShowStrings.push_back({ text, color, size }); }
     void clearShowStrings() { Show.ShowStrings.clear(); }
+
+    int movedDistance() { return abs(X_ - prevX_) + abs(Y_ - prevY_); }
+
+    int getActProperty(int type)
+    {
+        switch (type)
+        {
+        case 0: return Medicine; break;
+        case 1: return Fist; break;
+        case 2: return Sword; break;
+        case 3: return Knife; break;
+        case 4: return Unusual; break;
+        }
+        return 0;
+    }
+
+    bool canUseItem(Item* i);
+    void useItem(Item* i);
+    void levelUp();
+    bool canLevelUp();
+    int getLevelUpExp(int level);
+    bool canFinishedItem();
+    int getFinishedExpForItem(Item* i);
+
+    void equip(Item* i);
+
+    //ä»¥ä¸‹3ä¸ªå‡½æ•°çš„è¿”å›å€¼ä¸ºéœ€è¦æ˜¾ç¤ºçš„æ•°å€¼
+    int medicine(Role* r2);
+    int detoxification(Role* r2);
+    int usePoison(Role* r2);
 
 public:
     int AI_Action = 0;
-    int AI_MoveX, AI_MoveY;
-    int AI_ActionX, AI_ActionY;
+    int AI_MoveX = 0, AI_MoveY = 0;
+    int AI_ActionX = 0, AI_ActionY = 0;
     Magic* AI_Magic = nullptr;
     Item* AI_Item = nullptr;
 
 public:
-    int Network_Action;
-    int Network_MoveX;
-    int Network_MoveY;
-    int Network_ActionX;
-    int Network_ActionY;
+    int Network_Action = 0;
+    int Network_MoveX = 0;
+    int Network_MoveY = 0;
+    int Network_ActionX = 0;
+    int Network_ActionY = 0;
     Magic* Network_Magic = nullptr;
     Item* Network_Item = nullptr;
 
@@ -230,13 +290,50 @@ public:
     bool Competing = false;
 
 public:
-    static Role* getMaxValue() { return &max_role_value_; }
+    Pointf Pos;            //äºšåƒç´ çš„ç›´è§’åæ ‡
+    Pointf RealTowards;    //é¢å¯¹çš„æ–¹å‘ï¼Œè®¡ç®—æ”»å‡»ä½ç½®ï¼Œå‡»é€€æ–¹å‘ç­‰
+    //ä»¥ä¸‹ç”¨äºä¸€äº›è¢«åŠ¨ç§»åŠ¨çš„è®¡ç®—ï¼Œä¾‹å¦‚é—ªèº«ï¼Œå‡»é€€ç­‰ï¼Œä¸»åŠ¨ç§»åŠ¨å¯ä»¥ç›´æ¥ä¿®æ”¹åæ ‡
+    Pointf Velocity;        //æŒ‡è¯¥è´¨ç‚¹çš„é€Ÿåº¦ï¼Œæ¯å¸§æ®æ­¤è®¡ç®—åæ ‡
+    Pointf Acceleration;    //åŠ é€Ÿåº¦
+    int HurtFrame = 0;      //æ­£åœ¨å—åˆ°ä¼¤å®³
+    int CoolDown = 0;       //å†·å´
+    int Attention = 0;      //å‡ºåœº
+    int Invincible = 0;     //æ— æ•Œæ—¶é—´
+    int Frozen = 0;         //é™æ­¢æ—¶é—´
+    int Shake = 0;          //éœ‡åŠ¨æ—¶é—´
 
-private:
-    static Role max_role_value_;
+    int HaveAction = 0;        //å¼€å§‹è¡ŒåŠ¨
+    int ActType = -1;          //åŒ»æ‹³å‰‘åˆ€ç‰¹
+    int ActFrame = 0;          //è¡ŒåŠ¨å¸§æ•°
+    int PreActTimer = 0;       //ä¸Šæ¬¡è¡ŒåŠ¨çš„æ—¶é—´
+    int OperationType = -1;    //0-ç‚¹æ”»å‡»ï¼Œ1-é¢æ”»å‡»ï¼Œ2-è¿œç¨‹ï¼Œ3-é—ªèº«ï¼Œ 4-ç‰©å“ï¼Œ5-é˜²å¾¡
+    int OperationCount = 0;    //ä½¿ç”¨åŒä¸€æ”»å‡»çš„è®¡æ•°
+    int HurtThisFrame = 0;     //ä¸€å¸§å†…å—åˆ°ä¼¤å®³ç´¯ç§¯
+    int FindingWay = 0;        //aiæ­£åœ¨æ‰¾è·¯
+
+    double Posture = 0;    //æ¶åŠ¿ï¼Œç”¨äºæ ¼æŒ¡å´©é˜²ç­‰
+    int Breathless = 0;    //æ°”ç»
+    Magic* UsingMagic = nullptr;
+    Item* UsingItem = nullptr;
+
+public:
+    static Role* getMaxValue()
+    {
+        static Role max_role_value;
+        return &max_role_value;
+    }
+    static std::vector<int>& level_up_list()
+    {
+        static std::vector<int> list;
+        return list;
+    }
+
+    static void setMaxValue();
+    static void setLevelUpList();
+    void resetBattleInfo();
 };
 
-//´æµµÖĞµÄÎïÆ·Êı¾İ
+//å­˜æ¡£ä¸­çš„ç‰©å“æ•°æ®
 struct ItemSave
 {
     int ID;
@@ -244,7 +341,7 @@ struct ItemSave
     int Name1[10];
     char Introduction[60];
     int MagicID, HiddenWeaponEffectID, User, EquipType, ShowIntroduction;
-    int ItemType;    //0¾çÇé£¬1×°±¸£¬2ÃØóÅ£¬3Ò©Æ·£¬4°µÆ÷
+    int ItemType;    //0å‰§æƒ…ï¼Œ1è£…å¤‡ï¼Œ2ç§˜ç¬ˆï¼Œ3è¯å“ï¼Œ4æš—å™¨
     int UnKnown5, UnKnown6, UnKnown7;
     int AddHP, AddMaxHP, AddPoison, AddPhysicalPower, ChangeMPType, AddMP, AddMaxMP;
     int AddAttack, AddSpeed, AddDefence, AddMedicine, AddUsePoison, AddDetoxification, AddAntiPoison;
@@ -255,7 +352,7 @@ struct ItemSave
     int MakeItem[5], MakeItemCount[5];
 };
 
-//Êµ¼ÊµÄÎïÆ·Êı¾İ
+//å®é™…çš„ç‰©å“æ•°æ®
 struct Item : ItemSave
 {
 public:
@@ -264,19 +361,20 @@ public:
 
 public:
     bool isCompass();
+    static void setSpecialItems();
 };
 
-//´æµµÖĞµÄÎäÑ§Êı¾İ£¨ÎŞÊÊºÏ¶ÔÓ¦·­Òë£¬¶øÇÒÎäÏÀĞ¡ËµÖĞµÄÎäÑ§½üÓÚÄ§·¨£¬ÔİÇÒÈç´Ë£©
+//å­˜æ¡£ä¸­çš„æ­¦å­¦æ•°æ®ï¼ˆæ— é€‚åˆå¯¹åº”ç¿»è¯‘ï¼Œè€Œä¸”æ­¦ä¾ å°è¯´ä¸­çš„æ­¦å­¦è¿‘äºé­”æ³•ï¼Œæš‚ä¸”å¦‚æ­¤ï¼‰
 struct MagicSave
 {
     int ID;
     char Name[20];
     int Unknown[5];
     int SoundID;
-    int MagicType;    //1-È­£¬2-½££¬3-µ¶£¬4-ÌØÊâ
+    int MagicType;    //1-æ‹³ï¼Œ2-å‰‘ï¼Œ3-åˆ€ï¼Œ4-ç‰¹æ®Š
     int EffectID;
-    int HurtType;          //0-ÆÕÍ¨£¬1-ÎüÈ¡MP
-    int AttackAreaType;    //0-µã£¬1-Ïß£¬2-Ê®×Ö£¬3-Ãæ
+    int HurtType;          //0-æ™®é€šï¼Œ1-å¸å–MP
+    int AttackAreaType;    //0-ç‚¹ï¼Œ1-çº¿ï¼Œ2-åå­—ï¼Œ3-é¢
     int NeedMP, WithPoison;
     int Attack[10], SelectDistance[10], AttackDistance[10], AddMP[10], HurtMP[10];
 };
@@ -287,8 +385,8 @@ struct Magic : MagicSave
     int calMaxLevelIndexByMP(int mp, int max_level);
 };
 
-//´æµµÖĞµÄ×Ó³¡¾°Êı¾İ
-//Ô¼¶¨£ºScene±íÊ¾ÓÎÏ·ÖĞÔËĞĞµÄÄ³¸öElementÊµÀı£¬¶øMap±íÊ¾´æ´¢µÄÊı¾İ
+//å­˜æ¡£ä¸­çš„å­åœºæ™¯æ•°æ®
+//çº¦å®šï¼šSceneè¡¨ç¤ºæ¸¸æˆä¸­è¿è¡Œçš„æŸä¸ªElementå®ä¾‹ï¼Œè€ŒMapè¡¨ç¤ºå­˜å‚¨çš„æ•°æ®
 struct SubMapInfoSave
 {
     int ID;
@@ -301,10 +399,10 @@ struct SubMapInfoSave
     int JumpX, JumpY, JumpReturnX, JumpReturnY;
 };
 
-//³¡¾°ÊÂ¼şÊı¾İ
+//åœºæ™¯äº‹ä»¶æ•°æ®
 struct SubMapEvent
 {
-    //event1ÎªÖ÷¶¯´¥·¢£¬event2ÎªÎïÆ·´¥·¢£¬event3Îª¾­¹ı´¥·¢
+    //event1ä¸ºä¸»åŠ¨è§¦å‘ï¼Œevent2ä¸ºç‰©å“è§¦å‘ï¼Œevent3ä¸ºç»è¿‡è§¦å‘
     MAP_INT CannotWalk, Index, Event1, Event2, Event3, CurrentPic, EndPic, BeginPic, PicDelay;
 
 private:
@@ -322,7 +420,7 @@ public:
     }
 };
 
-//Êµ¼ÊµÄ³¡¾°Êı¾İ
+//å®é™…çš„åœºæ™¯æ•°æ®
 struct SubMapInfo : public SubMapInfoSave
 {
 public:
@@ -381,13 +479,13 @@ private:
     SubMapEvent events_[SUBMAP_EVENT_COUNT];
 };
 
-//´æµµÖĞµÄÉÌµêÊı¾İ
+//å­˜æ¡£ä¸­çš„å•†åº—æ•°æ®
 struct ShopSave
 {
     int ItemID[SHOP_ITEM_COUNT], Total[SHOP_ITEM_COUNT], Price[SHOP_ITEM_COUNT];
 };
 
-//Êµ¼ÊÉÌµêÊı¾İ
+//å®é™…å•†åº—æ•°æ®
 struct Shop : ShopSave
 {
 };

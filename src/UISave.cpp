@@ -1,18 +1,17 @@
 #include "UISave.h"
 #include "Event.h"
-#include "File.h"
 #include "MainScene.h"
 #include "Save.h"
 #include "SubScene.h"
 #include "UI.h"
-#include "convert.h"
+#include "filefunc.h"
 
 UISave::UISave()
 {
     std::vector<std::string> strings;
     auto get_save_time = [](int i) -> std::string
     {
-        auto str = File::getFileTime(Save::getFilename(i, 'r'));
+        auto str = filefunc::getFileTime(Save::getFilename(i, 'r'));
         if (str.empty())
         {
             str = "--------------------";
@@ -21,13 +20,13 @@ UISave::UISave()
     };
     for (int i = 0; i <= 10; i++)
     {
-        auto str = convert::formatString("ßM¶È%02d  %s", i, get_save_time(i).c_str());
+        auto str = fmt1::format("é€²åº¦{:02}  {}", i, get_save_time(i));
         strings.push_back(str);
     }
-    auto str = convert::formatString("×Ô„Ó™n  %s", get_save_time(AUTO_SAVE_ID).c_str());
+    auto str = fmt1::format("è‡ªå‹•æª”  {}", get_save_time(AUTO_SAVE_ID));
     strings.push_back(str);
     setStrings(strings);
-    childs_[0]->setVisible(false);    //ÆÁ±Î½ø¶È0
+    childs_[0]->setVisible(false);    //å±è”½è¿›åº¦0
     forceActiveChild(1);
     arrange(0, 0, 0, 28);
 }
@@ -38,7 +37,7 @@ UISave::~UISave()
 
 void UISave::onEntrance()
 {
-    //´æµµÊ±ÆÁ±Î×Ô¶¯µµ
+    //å­˜æ¡£æ—¶å±è”½è‡ªåŠ¨æ¡£
     if (mode_ == 1)
     {
         childs_.back()->setVisible(false);
@@ -57,7 +56,7 @@ void UISave::onPressedOK()
         }
         if (mode_ == 1)
         {
-            Event::getInstance()->arrangeBag();    //´æµµÊ±»áÕûÀíÎïÆ·±³°ü
+            Event::getInstance()->arrangeBag();    //å­˜æ¡£æ—¶ä¼šæ•´ç†ç‰©å“èƒŒåŒ…
             save(result_);
             setExit(true);
         }
@@ -66,7 +65,7 @@ void UISave::onPressedOK()
 
 void UISave::load(int r)
 {
-    auto sub_scene = getPointerFromRoot<SubScene>();    //¿ÉÒÔÖªµÀÔÚ²»ÔÚ×Ó³¡¾°ÖĞ
+    auto sub_scene = getPointerFromRoot<SubScene>();    //å¯ä»¥çŸ¥é“åœ¨ä¸åœ¨å­åœºæ™¯ä¸­
     auto save = Save::getInstance();
     auto main_scene = MainScene::getInstance();
     save->load(r);
@@ -94,7 +93,7 @@ void UISave::load(int r)
 
 void UISave::save(int r)
 {
-    auto sub_scene = getPointerFromRoot<SubScene>();    //¿ÉÒÔÖªµÀÔÚ²»ÔÚ×Ó³¡¾°ÖĞ
+    auto sub_scene = getPointerFromRoot<SubScene>();    //å¯ä»¥çŸ¥é“åœ¨ä¸åœ¨å­åœºæ™¯ä¸­
     auto save = Save::getInstance();
     auto main_scene = MainScene::getInstance();
     main_scene->getManPosition(save->MainMapX, save->MainMapY);

@@ -1,8 +1,9 @@
 #include "UIShop.h"
 #include "Event.h"
 #include "Font.h"
+#include "PotConv.h"
 #include "Save.h"
-#include "convert.h"
+#include "strfunc.h"
 
 UIShop::UIShop()
 {
@@ -18,24 +19,24 @@ UIShop::UIShop()
         button_left->setTexture("title", 104);
         buttons_.push_back(button_left);
 
-        auto button_right = std::make_shared<Button>(); 
+        auto button_right = std::make_shared<Button>();
         text->addChild(button_right, 36 * 12 + 108, 5);
         button_right->setTexture("title", 105);
         buttons_.push_back(button_right);
     }
     button_ok_ = std::make_shared<Button>();
-    button_ok_->setText("´_ÕJ");
+    button_ok_->setText("ç¢ºèª");
     addChild(button_ok_, 0, 190);
     button_cancel_ = std::make_shared<Button>();
-    button_cancel_->setText("È¡Ïû");
+    button_cancel_->setText("å–æ¶ˆ");
     addChild(button_cancel_, 100, 190);
     button_clear_ = std::make_shared<Button>();
-    button_clear_->setText("Çå³ı");
+    button_clear_->setText("æ¸…é™¤");
     addChild(button_clear_, 200, 190);
 
     setPosition(200, 230);
 
-    //µÄÇ°Ãæ¼¸¸öÊÇÎïÆ·Ïî£¬ºóÃæ3¸öÊÇ°´Å¥
+    //çš„å‰é¢å‡ ä¸ªæ˜¯ç‰©å“é¡¹ï¼Œåé¢3ä¸ªæ˜¯æŒ‰é’®
 }
 
 UIShop::~UIShop()
@@ -55,24 +56,28 @@ void UIShop::draw()
     std::string str;
     auto font = Font::getInstance();
 
-    str = convert::formatString("%-12s%8s%8s%8s%8s", "Æ·Ãû", "ƒr¸ñ", "´æØ›", "³ÖÓĞ", "Ó‹„");
+    str = "å“å             åƒ¹æ ¼    å­˜è²¨    æŒæœ‰    è¨ˆåŠƒ";
     font->draw(str, 24, x, y, { 200, 150, 50, 255 });
 
     for (int i = 0; i < 5; i++)
     {
         auto item = Save::getInstance()->getItem(shop_->ItemID[i]);
         int count = Save::getInstance()->getItemCountInBag(item->ID);
-        str = convert::formatString("%-12s%8d%8d%8d%8d", item->Name, shop_->Price[i], shop_->Total[i], count, plan_buy_[i]);
+        str = std::string(item->Name) + std::string(abs(12 - Font::getTextDrawSize(item->Name)), ' ');
+        str += fmt1::format("{:8}{:8}{:8}{:8}", shop_->Price[i], shop_->Total[i], count, plan_buy_[i]);
+        //str = fmt1::format("{:12}{:8}{:8}{:8}{:8}", item->Name, shop_->Price[i], shop_->Total[i], count, plan_buy_[i]);
+        //std::string m = PotConv::utf8tocp936((char*)str1.c_str());
+        //std::cout << m << "\n";
         ((Button*)(getChild(i).get()))->setText(str);
     }
 
     int need_money = calNeedMoney();
-    str = convert::formatString("¿‚Ó‹ãyƒÉ%8d", need_money);
+    str = fmt1::format("ç¸½è¨ˆéŠ€å…©{:8}", need_money);
     font->draw(str, 24, 300 + x, y + 25 + 6 * 25, { 255, 255, 255, 255 });
 
     BP_Color c = { 255, 255, 255, 255 };
     int money = Save::getInstance()->getMoneyCountInBag();
-    str = convert::formatString("³ÖÓĞãyƒÉ%8d", money);
+    str = fmt1::format("æŒæœ‰éŠ€å…©{:8}", money);
     if (money < need_money)
     {
         c = { 250, 50, 50, 255 };
@@ -85,7 +90,7 @@ void UIShop::dealEvent(BP_Event& e)
     static int first_press = 0;
     if (e.type == BP_KEYDOWN && (e.key.keysym.sym == BPK_LEFT || e.key.keysym.sym == BPK_RIGHT) && active_child_ < SHOP_ITEM_COUNT)
     {
-        if (first_press == 0 || first_press > 5)    //°´Ò»ÏÂµÄÊ±ºòÖ»×ßÒ»¸ñ
+        if (first_press == 0 || first_press > 5)    //æŒ‰ä¸€ä¸‹çš„æ—¶å€™åªèµ°ä¸€æ ¼
         {
             int index = active_child_;
             if (e.key.keysym.sym == BPK_LEFT)
@@ -113,14 +118,14 @@ void UIShop::dealEvent(BP_Event& e)
     {
         first_press = 0;
     }
-    //printf("%d ", first_press);
+    //fmt1::print("%d ", first_press);
 }
 
 void UIShop::onPressedOK()
 {
     for (int i = 0; i < SHOP_ITEM_COUNT * 2; i++)
     {
-        if (buttons_[i]->getState() == Press)
+        if (buttons_[i]->getState() == NodePress)
         {
             int index = i / 2;
             int lr = i % 2;
@@ -140,7 +145,7 @@ void UIShop::onPressedOK()
             }
         }
     }
-    if (button_ok_->getState() == Press)
+    if (button_ok_->getState() == NodePress)
     {
         if (calNeedMoney() <= Save::getInstance()->getMoneyCountInBag())
         {
@@ -153,11 +158,11 @@ void UIShop::onPressedOK()
             exitWithResult(0);
         }
     }
-    if (button_cancel_->getState() == Press)
+    if (button_cancel_->getState() == NodePress)
     {
         exitWithResult(-1);
     }
-    if (button_clear_->getState() == Press)
+    if (button_clear_->getState() == NodePress)
     {
         for (int i = 0; i < SHOP_ITEM_COUNT; i++)
         {

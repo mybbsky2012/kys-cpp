@@ -1,27 +1,21 @@
-#include "BattleScene.h"
-#include "BattleNetwork.h"    //±ØĞëÔÚAudioÖ®Ç°
-
+ï»¿#include "BattleScene.h"
 #include "Audio.h"
+#include "BattleNetwork.h"    //å¿…é¡»åœ¨Audioä¹‹å‰
 #include "DrawableOnCall.h"
 #include "Event.h"
-#include "File.h"
 #include "Font.h"
 #include "GameUtil.h"
 #include "MainScene.h"
 #include "Menu.h"
-#include "PotConv.h"
 #include "Random.h"
 #include "Save.h"
 #include "ShowExp.h"
 #include "ShowRoleDifference.h"
 #include "TeamMenu.h"
-#include "UIStatus.h"
+#include "strfunc.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <string>
-
-RandomDouble BattleScene::rng_;
 
 BattleScene::BattleScene()
 {
@@ -41,7 +35,8 @@ BattleScene::BattleScene()
     addChild(head_self_);
     battle_cursor_ = std::make_shared<BattleCursor>(this);
     save_ = Save::getInstance();
-    semi_real_ = GameUtil::getInstance()->getInt("game", "semi_real", 0);
+    semi_real_ = GameUtil::getInstance()->getInt("game", "battle_mode", 0);
+    rand_.set_seed();
 }
 
 BattleScene::BattleScene(int id) : BattleScene()
@@ -71,22 +66,22 @@ void BattleScene::draw()
     Engine::getInstance()->setRenderAssistTexture();
     Engine::getInstance()->fillColor({ 0, 0, 0, 255 }, 0, 0, render_center_x_ * 2, render_center_y_ * 2);
 
-    //µØÃæÊÇ·ñĞèÒªÁÁ¶ÈµÄ±ä»¯£¬×Ô¶¯ÈËÎï»òÕßÑ¡ÔñÎ»ÖÃ²¿·ÖÃ»ÓĞÔËĞĞ
+    //åœ°é¢æ˜¯å¦éœ€è¦äº®åº¦çš„å˜åŒ–ï¼Œè‡ªåŠ¨äººç‰©æˆ–è€…é€‰æ‹©ä½ç½®éƒ¨åˆ†æ²¡æœ‰è¿è¡Œ
     bool need_change_earth_color_ = battle_cursor_->isRunning() && !acting_role_->isAuto();
 
-    //Ò»Õû¿éµØÃæ
+    //ä¸€æ•´å—åœ°é¢
     if (earth_texture_)
     {
         BP_Color c = { 255, 255, 255, 255 };
         if (need_change_earth_color_)
         {
-            c = { 64, 64, 64, 255 };    //Èç¹ûµØÃæĞèÒªÁÁ¶È±ä»¯£¬ÔòÒÔ»­×î°µµÄÎªÖ÷
+            c = { 64, 64, 64, 255 };    //å¦‚æœåœ°é¢éœ€è¦äº®åº¦å˜åŒ–ï¼Œåˆ™ä»¥ç”»æœ€æš—çš„ä¸ºä¸»
         }
         Engine::getInstance()->setColor(earth_texture_, c);
         auto p = getPositionOnWholeEarth(man_x_, man_y_);
         int w = render_center_x_ * 2;
         int h = render_center_y_ * 2;
-        //»ñÈ¡µÄÊÇÖĞĞÄÎ»ÖÃ£¬ÈçÌùÍ¼Ó¦¼õµôÆÁÄ»³ß´çµÄÒ»°ë
+        //è·å–çš„æ˜¯ä¸­å¿ƒä½ç½®ï¼Œå¦‚è´´å›¾åº”å‡æ‰å±å¹•å°ºå¯¸çš„ä¸€åŠ
         BP_Rect rect0 = { p.x - render_center_x_ - x_, p.y - render_center_y_ - y_, w, h }, rect1 = { 0, 0, w, h };
         Engine::getInstance()->renderCopy(earth_texture_, &rect0, &rect1, 1);
     }
@@ -163,7 +158,7 @@ void BattleScene::draw()
                 auto r = role_layer_.data(ix, iy);
                 if (r)
                 {
-                    std::string path = convert::formatString("fight/fight%03d", r->HeadID);
+                    std::string path = fmt1::format("fight/fight{:03}", r->HeadID);
                     BP_Color color = { 255, 255, 255, 255 };
                     uint8_t alpha = 255;
                     if (battle_cursor_->isRunning() && !acting_role_->isAuto())
@@ -192,15 +187,15 @@ void BattleScene::draw()
                 }
                 if (effect_id_ >= 0 && haveEffect(ix, iy))
                 {
-                    std::string path = convert::formatString("eft/eft%03d", effect_id_);
+                    std::string path = fmt1::format("eft/eft{:03}", effect_id_);
                     int dis = calDistance(acting_role_->X(), acting_role_->Y(), ix, iy);
-                    num = effect_frame_ - dis + rng_.rand_int(3) - rng_.rand_int(3);
+                    num = effect_frame_ - dis + rand_.rand_int(3) - rand_.rand_int(3);
                     TextureManager::getInstance()->renderTexture(path, num, p.x, p.y, { 255, 255, 255, 255 }, 224);
                 }
             }
         }
     }
-    Engine::getInstance()->renderAssistTextureToWindow();
+    Engine::getInstance()->renderAssistTextureToMain();
 
     if (semi_real_)
     {
@@ -223,7 +218,7 @@ void BattleScene::draw()
         Engine::getInstance()->fillColor({ 0, 0, 0, 128 }, 0, 0, -1, -1);
     }
 
-    //printf("Battle scene drawn\n");
+    //fmt1::print("Battle scene drawn\n");
 }
 
 void BattleScene::dealEvent(BP_Event& e)
@@ -236,10 +231,10 @@ void BattleScene::dealEvent(BP_Event& e)
     Role* role = nullptr;
     if (semi_real_ == 0)
     {
-        //Ñ¡ÔñÎ»ÓÚÈËÎïÊı×éÖĞµÄµÚÒ»¸öÈË
+        //é€‰æ‹©ä½äºäººç‰©æ•°ç»„ä¸­çš„ç¬¬ä¸€ä¸ªäºº
         role = battle_roles_[0];
 
-        //ÈôµÚÒ»¸öÈËÒÑ¾­ĞĞ¶¯¹ı£¬ËµÃ÷ËùÓĞÈË¶¼ĞĞ¶¯ÁË£¬ÔòÇå³ıĞĞ¶¯×´Ì¬£¬ÖØÅÅÈËÎï
+        //è‹¥ç¬¬ä¸€ä¸ªäººå·²ç»è¡ŒåŠ¨è¿‡ï¼Œè¯´æ˜æ‰€æœ‰äººéƒ½è¡ŒåŠ¨äº†ï¼Œåˆ™æ¸…é™¤è¡ŒåŠ¨çŠ¶æ€ï¼Œé‡æ’äººç‰©
         if (role->Acted != 0)
         {
             resetRolesAct();
@@ -249,7 +244,7 @@ void BattleScene::dealEvent(BP_Event& e)
     }
     else
     {
-        //Ê×ÏÈÊÔÍ¼Ñ¡³öÒ»ÈË
+        //é¦–å…ˆè¯•å›¾é€‰å‡ºä¸€äºº
         for (auto r : battle_roles_)
         {
             if (r->Progress > 1000)
@@ -258,7 +253,7 @@ void BattleScene::dealEvent(BP_Event& e)
                 break;
             }
         }
-        //ÎŞ·¨Ñ¡³öÈË£¬Ôö¼ÓËùÓĞÈË½ø¶ÈÌõ£¬¼ÌĞø
+        //æ— æ³•é€‰å‡ºäººï¼Œå¢åŠ æ‰€æœ‰äººè¿›åº¦æ¡ï¼Œç»§ç»­
         if (role == nullptr)
         {
             for (auto r : battle_roles_)
@@ -271,18 +266,18 @@ void BattleScene::dealEvent(BP_Event& e)
 
     acting_role_ = role;
 
-    //¶¨Î»
+    //å®šä½
     man_x_ = role->X();
     man_y_ = role->Y();
     select_x_ = role->X();
     select_y_ = role->Y();
     head_self_->setRole(role);
-    head_self_->setState(RunNode::Pass);
+    head_self_->setState(RunNode::NodePass);
 
-    //ĞĞ¶¯
+    //è¡ŒåŠ¨
     action(role);
 
-    //Èç¹û´ËÈË³É¹¦ĞĞ¶¯¹ı£¬Ôò·Åµ½¶ÓÎ²
+    //å¦‚æœæ­¤äººæˆåŠŸè¡ŒåŠ¨è¿‡ï¼Œåˆ™æ”¾åˆ°é˜Ÿå°¾
     if (role->Acted)
     {
         if (semi_real_ == 0)
@@ -298,13 +293,13 @@ void BattleScene::dealEvent(BP_Event& e)
         poisonEffect(role);
     }
 
-    //Çå³ı±»»÷ÍËµÄÈËÎï
+    //æ¸…é™¤è¢«å‡»é€€çš„äººç‰©
     clearDead();
 
-    //¼ì²âÕ½¶·½á¹û
+    //æ£€æµ‹æˆ˜æ–—ç»“æœ
     int battle_result = checkResult();
 
-    //ÎÒ·½Ê¤
+    //æˆ‘æ–¹èƒœ
     if (battle_result >= 0)
     {
         result_ = battle_result;
@@ -322,7 +317,7 @@ void BattleScene::dealEvent2(BP_Event& e)
     {
         for (auto r : battle_roles_)
         {
-            if (r->Team == 0 && r->Auto == 1)    //×¢Òâ£ºautoÎªÆäËûÖµµÄ²»ÄÜÈ¡Ïû
+            if (r->Team == 0 && r->Auto == 1)    //æ³¨æ„ï¼šautoä¸ºå…¶ä»–å€¼çš„ä¸èƒ½å–æ¶ˆ
             {
                 r->Auto = 0;
             }
@@ -334,7 +329,7 @@ void BattleScene::onEntrance()
 {
     calViewRegion();
     Audio::getInstance()->playMusic(info_->Music);
-    //×¢Òâ´ËÊ±²ÅÄÜµÃµ½´°¿ÚµÄ´óĞ¡£¬ÓÃÀ´ÉèÖÃÍ·ÏñµÄÎ»ÖÃ
+    //æ³¨æ„æ­¤æ—¶æ‰èƒ½å¾—åˆ°çª—å£çš„å¤§å°ï¼Œç”¨æ¥è®¾ç½®å¤´åƒçš„ä½ç½®
     head_self_->setPosition(80, 100);
 
     //RunElement::addOnRootTop(MainScene::getInstance()->getWeather());
@@ -342,14 +337,14 @@ void BattleScene::onEntrance()
 
     //earth_texture_ = Engine::getInstance()->createARGBRenderedTexture(COORD_COUNT * TILE_W * 2, COORD_COUNT * TILE_H * 2);
     //Engine::getInstance()->setRenderTarget(earth_texture_);
-    ////¶şÕßÖ®²îÊÇÆÁÄ»ÖĞĞÄÓë´óÎÆÀíµÄÖĞĞÄµÄ¾àÀë
+    ////äºŒè€…ä¹‹å·®æ˜¯å±å¹•ä¸­å¿ƒä¸å¤§çº¹ç†çš„ä¸­å¿ƒçš„è·ç¦»
     //for (int i1 = 0; i1 < COORD_COUNT; i1++)
     //{
     //    for (int i2 = 0; i2 < COORD_COUNT; i2++)
     //    {
     //        auto p = getPositionOnWholeEarth(i1, i2);
     //        int num = earth_layer_.data(i1, i2) / 2;
-    //        //ÎŞ¸ß¶ÈµØÃæ
+    //        //æ— é«˜åº¦åœ°é¢
     //        if (num > 0)
     //        {
     //            TextureManager::getInstance()->renderTexture("smap", num, p.x, p.y);
@@ -359,20 +354,20 @@ void BattleScene::onEntrance()
     //Engine::getInstance()->resetRenderTarget();
 
     readBattleInfo();
-    //³õÊ¼×´Ì¬
+    //åˆå§‹çŠ¶æ€
     for (auto r : battle_roles_)
     {
         setRoleInitState(r);
         r->Progress = 0;
     }
-    //ÅÅĞò
+    //æ’åº
     sortRoles();
     acting_role_ = battle_roles_[0];
 }
 
 void BattleScene::onExit()
 {
-    //Çå¿ÕÈ«²¿½ÇÉ«µÄÎ»ÖÃ²ã
+    //æ¸…ç©ºå…¨éƒ¨è§’è‰²çš„ä½ç½®å±‚
     for (auto r : Save::getInstance()->getRoles())
     {
         r->setRolePositionLayer(nullptr);
@@ -388,20 +383,7 @@ void BattleScene::backRun()
 {
 }
 
-void BattleScene::setupRolePosition(Role* r, int team, int x, int y)
-{
-    if (r == nullptr)
-    {
-        return;
-    }
-    r->setPosition(x, y);
-    r->Team = team;
-    readFightFrame(r);
-    r->FaceTowards = rng_.rand_int(4);
-    battle_roles_.push_back(r);
-}
-
-//¶ÁÈ¡Õ½¶·ĞÅÏ¢£¬È·¶¨ÊÇÑ¡ÈËÎï»¹ÊÇ×Ô¶¯ÈËÎï
+//è¯»å–æˆ˜æ–—ä¿¡æ¯ï¼Œç¡®å®šæ˜¯é€‰äººç‰©è¿˜æ˜¯è‡ªåŠ¨äººç‰©
 void BattleScene::readBattleInfo()
 {
     man_x_ = COORD_COUNT / 2;
@@ -409,31 +391,31 @@ void BattleScene::readBattleInfo()
 
     if (network_)
     {
-        // ÍøÂç´¦Àí
+        // ç½‘ç»œå¤„ç†
         unsigned int seed;
         int friends;
         std::vector<RoleSave> sandBoxRoles;
         network_->getResults(seed, friends, sandBoxRoles);
-        rng_.set_seed(seed + 1);
+        rand_.set_seed(seed + 1);
         Save::getInstance()->resetRData(sandBoxRoles);
-        //ÉèÖÃÈ«²¿½ÇÉ«µÄÎ»ÖÃ²ã£¬±ÜÃâ½ñºó³ö´í
+        //è®¾ç½®å…¨éƒ¨è§’è‰²çš„ä½ç½®å±‚ï¼Œé¿å…ä»Šåå‡ºé”™
         for (auto r : Save::getInstance()->getRoles())
         {
             r->setRolePositionLayer(&role_layer_);
-            r->Team = 2;    //ÏÈÈ«²¿ÉèÖÃ³É²»´æÔÚµÄÕóÓª
+            r->Team = 2;    //å…ˆå…¨éƒ¨è®¾ç½®æˆä¸å­˜åœ¨çš„é˜µè¥
             r->Auto = 1;
         }
-        // ÕâÀï´úÂëĞ´µÄºÜ²î£¬²»¹ıÏÈÕâÑù°É
+        // è¿™é‡Œä»£ç å†™çš„å¾ˆå·®ï¼Œä¸è¿‡å…ˆè¿™æ ·å§
         if (network_->isHost())
         {
-            // friends_Õ¼¾İÇ°¼¸¸ö
+            // friends_å æ®å‰å‡ ä¸ª
             for (int i = 0; i < friends; i++)
             {
                 auto r = Save::getInstance()->getRole(i);
                 setupRolePosition(r, 0, info_->TeamMateX[i], info_->TeamMateY[i]);
                 friends_.push_back(r);
             }
-            // ÒòÎªÖªµÀfriends_´óĞ¡£¬¿ÉµÃÖª¼¸¸öµĞÈË
+            // å› ä¸ºçŸ¥é“friends_å¤§å°ï¼Œå¯å¾—çŸ¥å‡ ä¸ªæ•Œäºº
             for (int i = 0; i < sandBoxRoles.size() - friends; i++)
             {
                 auto r = Save::getInstance()->getRole(i + friends);
@@ -442,15 +424,15 @@ void BattleScene::readBattleInfo()
         }
         else
         {
-            // friends_Õ¼¾İºó¼¸¸ö
-            // ÏÈ¶Ô·½
+            // friends_å æ®åå‡ ä¸ª
+            // å…ˆå¯¹æ–¹
             for (int i = 0; i < sandBoxRoles.size() - friends; i++)
             {
                 auto r = Save::getInstance()->getRole(i);
-                // TeamMateXÊµ¼ÊÊÇ¶ÔÃæµÄ
+                // TeamMateXå®é™…æ˜¯å¯¹é¢çš„
                 setupRolePosition(r, 1, info_->TeamMateX[i], info_->TeamMateY[i]);
             }
-            // È»ºóÊÇ×Ô¼º
+            // ç„¶åæ˜¯è‡ªå·±
             for (int i = 0; i < friends; i++)
             {
                 int friend_idx = sandBoxRoles.size() - friends + i;
@@ -462,17 +444,18 @@ void BattleScene::readBattleInfo()
     }
     else
     {
-        // Õı³£Õ½¶·
-        //ÉèÖÃÈ«²¿½ÇÉ«µÄÎ»ÖÃ²ã£¬±ÜÃâ½ñºó³ö´í
+        // æ­£å¸¸æˆ˜æ–—
+        //è®¾ç½®å…¨éƒ¨è§’è‰²çš„ä½ç½®å±‚ï¼Œé¿å…ä»Šåå‡ºé”™
         for (auto r : Save::getInstance()->getRoles())
         {
             r->setRolePositionLayer(&role_layer_);
-            r->Team = 2;    //ÏÈÈ«²¿ÉèÖÃ³É²»´æÔÚµÄÕóÓª
+            r->Team = 2;    //å…ˆå…¨éƒ¨è®¾ç½®æˆä¸å­˜åœ¨çš„é˜µè¥
             r->Auto = 1;
+            r->Dead = 0;
         }
 
-        //Ê×ÏÈÉèÖÃÎ»ÖÃºÍÕóÓª£¬ÆäËûµÄºóÃæÍ³Ò»´¦Àí
-        //µĞ·½
+        //é¦–å…ˆè®¾ç½®ä½ç½®å’Œé˜µè¥ï¼Œå…¶ä»–çš„åé¢ç»Ÿä¸€å¤„ç†
+        //æ•Œæ–¹
         for (int i = 0; i < BATTLE_ENEMY_COUNT; i++)
         {
             auto r = Save::getInstance()->getRole(info_->Enemy[i]);
@@ -482,13 +465,13 @@ void BattleScene::readBattleInfo()
                 r->setPosition(info_->EnemyX[i], info_->EnemyY[i]);
                 r->Team = 1;
                 readFightFrame(r);
-                r->FaceTowards = rng_.rand_int(4);
+                r->FaceTowards = rand_.rand_int(4);
                 man_x_ = r->X();
                 man_y_ = r->Y();
             }
         }
-
-        //ÅĞ¶ÏÊÇ²»ÊÇÓĞ×Ô¶¯Õ½¶·ÈËÎï
+        fmt1::print("{}", battle_roles_.size());
+        //åˆ¤æ–­æ˜¯ä¸æ˜¯æœ‰è‡ªåŠ¨æˆ˜æ–—äººç‰©
         if (info_->AutoTeamMate[0] >= 0)
         {
             for (int i = 0; i < TEAMMATE_COUNT; i++)
@@ -497,7 +480,7 @@ void BattleScene::readBattleInfo()
                 if (r)
                 {
                     friends_.push_back(r);
-                    r->Auto = 2;    //ÓÉAI¿ØÖÆ
+                    r->Auto = 2;    //ç”±AIæ§åˆ¶
                 }
             }
         }
@@ -508,7 +491,7 @@ void BattleScene::readBattleInfo()
             team_menu->run();
             friends_ = team_menu->getRoles();
         }
-        //¶ÓÓÑ
+        //é˜Ÿå‹
         for (int i = 0; i < friends_.size(); i++)
         {
             auto r = friends_[i];
@@ -521,7 +504,7 @@ void BattleScene::readBattleInfo()
         }
     }
 
-    //ÊÓ½Ç×ªÖÁµÚÒ»¸öµĞÈË
+    //è§†è§’è½¬è‡³ç¬¬ä¸€ä¸ªæ•Œäºº
     if (battle_roles_.size() > 0)
     {
         man_x_ = battle_roles_[0]->X();
@@ -545,7 +528,7 @@ void BattleScene::setRoleInitState(Role* r)
     GameUtil::limit2(r->HP, r->MaxHP / 10, r->MaxHP);
     GameUtil::limit2(r->MP, r->MaxMP / 10, r->MaxMP);
 
-    // ¶Ô·½==1 Ôò ×Ô¶¯
+    // å¯¹æ–¹==1 åˆ™ è‡ªåŠ¨
     r->Auto = r->Team;
 
     if (network_)
@@ -557,24 +540,24 @@ void BattleScene::setRoleInitState(Role* r)
 
     if (network_ || r->Team == 1)
     {
-        // ÁªÍø£¬»òÕßµĞ·½¶¼ÓĞ»Ø¸´×´Ì¬µÄÓÅ´ı
+        // è”ç½‘ï¼Œæˆ–è€…æ•Œæ–¹éƒ½æœ‰å›å¤çŠ¶æ€çš„ä¼˜å¾…
         r->PhysicalPower = (std::max)(r->PhysicalPower, 90);
         r->HP = r->MaxHP;
         r->MP = r->MaxMP;
         r->Poison = 0;
-        r->Hurt = 0;
+        r->HurtThisFrame = 0;
     }
 
-    //¶ÁÈ¡¶¯×÷Ö¡Êı
+    //è¯»å–åŠ¨ä½œå¸§æ•°
     readFightFrame(r);
 
     setFaceTowardsNearest(r);
-    //r->FaceTowards = RandomClassical::rand(4);  //Ã»Í·²ÔÓ¬ËæÒâÑ¡ÔñÃæÏò
+    //r->FaceTowards = RandomClassical::rand(4);  //æ²¡å¤´è‹è‡éšæ„é€‰æ‹©é¢å‘
 }
 
 void BattleScene::setFaceTowardsNearest(Role* r, bool in_effect /*= false*/)
 {
-    //Ñ°ÕÒÀë×Ô¼º×î½üµÄµĞ·½£¬ÉèÖÃÃæÏò
+    //å¯»æ‰¾ç¦»è‡ªå·±æœ€è¿‘çš„æ•Œæ–¹ï¼Œè®¾ç½®é¢å‘
     int min_distance = COORD_COUNT * COORD_COUNT;
     Role* r_near = nullptr;
     for (auto r1 : battle_roles_)
@@ -609,10 +592,10 @@ void BattleScene::readFightFrame(Role* r)
     {
         r->FightFrame[i] = 0;
     }
-    std::string text_group = convert::formatString("fight/fight%03d", r->HeadID);
+    std::string text_group = fmt1::format("fight/fight{:03}", r->HeadID);
     std::string frame_txt = TextureManager::getInstance()->getTextureGroup(text_group)->getFileContent("fightframe.txt");
     std::vector<int> frames;
-    convert::findNumbers(frame_txt, &frames);
+    strfunc::findNumbers(frame_txt, &frames);
     for (int i = 0; i < frames.size() / 2; i++)
     {
         r->FightFrame[frames[i * 2]] = frames[i * 2 + 1];
@@ -624,19 +607,18 @@ void BattleScene::sortRoles()
     if (semi_real_ == 0)
     {
         std::sort(battle_roles_.begin(), battle_roles_.end(), [](Role* r1, Role* r2)
-        {
-            return std::make_tuple(r1->Speed, r1->ID, r1->X(), r1->Y()) > std::make_tuple(r2->Speed, r2->ID, r2->X(), r2->Y());
-        });
+            {
+                return std::make_tuple(r1->Speed, r1->ID, r1->X(), r1->Y()) > std::make_tuple(r2->Speed, r2->ID, r2->X(), r2->Y());
+            });
     }
     else
     {
         std::sort(battle_roles_.begin(), battle_roles_.end(), [](Role* r1, Role* r2)
-        {
-            return std::make_tuple(r1->Progress, r1->ID, r1->X(), r2->Y()) > std::make_tuple(r2->Progress, r2->ID, r2->X(), r2->Y());
-        });
+            {
+                return std::make_tuple(r1->Progress, r1->ID, r1->X(), r2->Y()) > std::make_tuple(r2->Progress, r2->ID, r2->X(), r2->Y());
+            });
     }
 }
-
 
 void BattleScene::resetRolesAct()
 {
@@ -713,7 +695,7 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
             std::vector<Point> cal_stack_next;
             auto check_next = [&](Point p1) -> void
             {
-                //Î´¼ÆËã¹ıÇÒ¿ÉÒÔ×ßµÄ¸ñ×Ó²ÎÓëÏÂÒ»²½µÄ¼ÆËã
+                //æœªè®¡ç®—è¿‡ä¸”å¯ä»¥èµ°çš„æ ¼å­å‚ä¸ä¸‹ä¸€æ­¥çš„è®¡ç®—
                 if (select_layer_.data(p1.x, p1.y) == -1 && canWalk(p1.x, p1.y))
                 {
                     select_layer_.data(p1.x, p1.y) = step - 1;
@@ -723,10 +705,10 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
             };
             for (auto p : cal_stack)
             {
-                //¼ì²âÊÇ·ñÔÚµĞ·½ÉíÅÔ£¬ÊÓÇé¿ö´ò¿ª´ËÑ¡Ïî
+                //æ£€æµ‹æ˜¯å¦åœ¨æ•Œæ–¹èº«æ—ï¼Œè§†æƒ…å†µæ‰“å¼€æ­¤é€‰é¡¹
                 if (!isNearEnemy(team, p.x, p.y) || (p.x == x && p.y == y))
                 {
-                    //¼ì²â4¸öÏàÁÚµã
+                    //æ£€æµ‹4ä¸ªç›¸é‚»ç‚¹
                     check_next({ p.x - 1, p.y });
                     check_next({ p.x + 1, p.y });
                     check_next({ p.x, p.y - 1 });
@@ -735,12 +717,12 @@ void BattleScene::calSelectLayer(int x, int y, int team, int mode, int step /*= 
                 if (count >= COORD_COUNT * COORD_COUNT)
                 {
                     break;
-                }    //×î¶à¼ÆËã´ÎÊı£¬±ÜÃâËÀµô
+                }    //æœ€å¤šè®¡ç®—æ¬¡æ•°ï¼Œé¿å…æ­»æ‰
             }
             if (cal_stack_next.size() == 0)
             {
                 break;
-            }    //ÎŞĞÂµÄµã£¬½áÊø
+            }    //æ— æ–°çš„ç‚¹ï¼Œç»“æŸ
             cal_stack = cal_stack_next;
             step--;
         }
@@ -811,14 +793,14 @@ void BattleScene::calEffectLayer(int x, int y, int select_x, int select_y, Magic
 {
     effect_layer_.setAll(-1);
 
-    //ÈôÎ´Ö¸¶¨ÎäÑ§£¬ÔòÈÏÎªÖ»Ñ¡ÔñÒ»¸öµã
+    //è‹¥æœªæŒ‡å®šæ­¦å­¦ï¼Œåˆ™è®¤ä¸ºåªé€‰æ‹©ä¸€ä¸ªç‚¹
     if (m == nullptr || m->AttackAreaType == 0)
     {
         effect_layer_.data(select_x, select_y) = 0;
         return;
     }
 
-    //´Ë´¦±È½ÏÀÛ×¸£¬¾ÍÕâÑù°É
+    //æ­¤å¤„æ¯”è¾ƒç´¯èµ˜ï¼Œå°±è¿™æ ·å§
     if (m->AttackAreaType == 1)
     {
         int tw = calTowards(x, y, select_x, select_y);
@@ -942,6 +924,45 @@ bool BattleScene::isNearEnemy(int team, int x, int y)
     return false;
 }
 
+void BattleScene::calDistanceLayer(int x, int y, MapSquareInt& distance_layer, int max_step)
+{
+    distance_layer.setAll(max_step + 1);
+    std::vector<Point> cal_stack;
+    distance_layer.data(x, y) = 0;
+    cal_stack.push_back({ x, y });
+    int count = 0;
+    int step = 0;
+    while (step <= 64)
+    {
+        std::vector<Point> cal_stack_next;
+        auto check_next = [&](Point p1) -> void
+        {
+            //æœªè®¡ç®—è¿‡ä¸”å¯ä»¥èµ°çš„æ ¼å­å‚ä¸ä¸‹ä¸€æ­¥çš„è®¡ç®—
+            if (distance_layer.data(p1.x, p1.y) == max_step + 1 && canWalk(p1.x, p1.y))
+            {
+                distance_layer.data(p1.x, p1.y) = step + 1;
+                cal_stack_next.push_back(p1);
+                count++;
+            }
+        };
+        for (auto p : cal_stack)
+        {
+            distance_layer.data(p.x, p.y) = step;
+            check_next({ p.x - 1, p.y });
+            check_next({ p.x + 1, p.y });
+            check_next({ p.x, p.y - 1 });
+            check_next({ p.x, p.y + 1 });
+            if (count >= distance_layer.squareSize())
+            {
+                break;
+            }    //æœ€å¤šè®¡ç®—æ¬¡æ•°ï¼Œé¿å…æ­»æ‰
+        }
+        if (cal_stack_next.size() == 0) { break; }    //æ— æ–°çš„ç‚¹ï¼Œç»“æŸ
+        cal_stack = cal_stack_next;
+        step++;
+    }
+}
+
 Role* BattleScene::getSelectedRole()
 {
     return role_layer_.data(select_x_, select_y_);
@@ -953,88 +974,88 @@ void BattleScene::action(Role* r)
 
     if (network_ && r->Team == 1)
     {
-        // ÍøÂçÁ¬½Ó£¬²¢ÇÒÊÇ¶Ô·½ĞĞ¶¯
-        // »ñÈ¡¶Ô·½ĞĞ¶¯
+        // ç½‘ç»œè¿æ¥ï¼Œå¹¶ä¸”æ˜¯å¯¹æ–¹è¡ŒåŠ¨
+        // è·å–å¯¹æ–¹è¡ŒåŠ¨
         receiveAction(r);
         battle_menu_->setResult(r->Network_Action);
     }
     else
     {
-        // ¼º·½ĞĞ¶¯
+        // å·±æ–¹è¡ŒåŠ¨
         battle_menu_->runAsRole(r);
     }
 
     r->Network_Action = battle_menu_->getResult();
     std::string str = battle_menu_->getResultString();
 
-    //ÕâÀïÈç¹ûÓÃÕûĞÍ±íÊ¾·µ»Ø£¬Ìí¼ÓĞÂÏî¾ÍÌ«¸´ÔÓÁË
-    if (str == "ÒÆ„Ó")
+    //è¿™é‡Œå¦‚æœç”¨æ•´å‹è¡¨ç¤ºè¿”å›ï¼Œæ·»åŠ æ–°é¡¹å°±å¤ªå¤æ‚äº†
+    if (str == "ç§»å‹•")
     {
         actMove(r);
     }
-    else if (str == "ÎäŒW")
+    else if (str == "æ­¦å­¸")
     {
         actUseMagic(r);
     }
-    else if (str == "ÓÃ¶¾")
+    else if (str == "ç”¨æ¯’")
     {
         actUsePoison(r);
     }
-    else if (str == "½â¶¾")
+    else if (str == "è§£æ¯’")
     {
         actDetoxification(r);
     }
-    else if (str == "át¯Ÿ")
+    else if (str == "é†«ç™‚")
     {
         actMedicine(r);
     }
-    else if (str == "°µÆ÷")
+    else if (str == "æš—å™¨")
     {
         actUseHiddenWeapon(r);
     }
-    else if (str == "ËÆ·")
+    else if (str == "è—¥å“")
     {
         actUseDrug(r);
     }
-    else if (str == "µÈ´ı")
+    else if (str == "ç­‰å¾…")
     {
         actWait(r);
     }
-    else if (str == " î‘B")
+    else if (str == "ç‹€æ…‹")
     {
         actStatus(r);
     }
-    else if (str == "×Ô„Ó")
+    else if (str == "è‡ªå‹•")
     {
         actAuto(r);
-        // ¶¨Îª·Ï²Ù×÷ ²»È»¶ÔÃæÒ²×Ô¶¯ÁË
+        // å®šä¸ºåºŸæ“ä½œ ä¸ç„¶å¯¹é¢ä¹Ÿè‡ªåŠ¨äº†
         r->Network_Action = -1;
     }
-    else if (str == "½YÊø")
+    else if (str == "çµæŸ")
     {
         actRest(r);
     }
 
-    //ÏÂÒ»¸öĞĞ¶¯µÄ£¬²Ëµ¥Ïî´ÓµÚÒ»¸ö¿ªÊ¼
+    //ä¸‹ä¸€ä¸ªè¡ŒåŠ¨çš„ï¼Œèœå•é¡¹ä»ç¬¬ä¸€ä¸ªå¼€å§‹
     if (r->Acted)
     {
         battle_menu_->setStartItem(0);
     }
 
-    // ¼º·½ĞĞ¶¯£¬´«Êä
+    // å·±æ–¹è¡ŒåŠ¨ï¼Œä¼ è¾“
     if (network_ && r->Team == 0)
     {
         sendAction(r);
     }
 
-    // ÅÜ¶¯»­
+    // è·‘åŠ¨ç”»
     if (actionAnimation_)
     {
         actionAnimation_();
     }
 
-    // ²¥·ÅÍê¶¯»­£¬Çå¿ÕÏÔÊ¾
-    // ĞèÒªÊÖ¶¯ÇåÀíÒ»ÏÂÆäËûÈËµÄÏÔÊ¾Ğ§¹û
+    // æ’­æ”¾å®ŒåŠ¨ç”»ï¼Œæ¸…ç©ºæ˜¾ç¤º
+    // éœ€è¦æ‰‹åŠ¨æ¸…ç†ä¸€ä¸‹å…¶ä»–äººçš„æ˜¾ç¤ºæ•ˆæœ
     for (auto r : battle_roles_)
     {
         r->Show.clear();
@@ -1075,23 +1096,31 @@ void BattleScene::actUseMagic(Role* r)
         else
         {
             magic_menu->setStartItem(r->SelectedMagic);
-            magic_menu->runAsRole(r);
-            magic = magic_menu->getMagic();
-            r->SelectedMagic = magic_menu->getResult();
+            if (r->isAuto())
+            {
+                magic = r->AI_Magic;
+                r->SelectedMagic = r->getMagicOfRoleIndex(magic);
+            }
+            else
+            {
+                magic_menu->runAsRole(r);
+                magic = magic_menu->getMagic();
+                r->SelectedMagic = magic_menu->getResult();
+            }
         }
         if (magic == nullptr)
         {
             break;
-        }    //¿ÉÄÜÊÇÍË³öÓÎÏ·£¬»òÕßÊÇÃ»ÓĞÑ¡Îä¹¦
+        }    //å¯èƒ½æ˜¯é€€å‡ºæ¸¸æˆï¼Œæˆ–è€…æ˜¯æ²¡æœ‰é€‰æ­¦åŠŸ
         r->ActTeam = 1;
-        //level_index±íÊ¾´Ó0µ½9£¬¶ølevel´Ó0µ½999
+        //level_indexè¡¨ç¤ºä»0åˆ°9ï¼Œè€Œlevelä»0åˆ°999
         int level_index = r->getMagicLevelIndex(magic->ID);
         calSelectLayerByMagic(r->X(), r->Y(), r->Team, magic, level_index);
-        //Ñ¡ÔñÄ¿±ê
+        //é€‰æ‹©ç›®æ ‡
         battle_cursor_->setMode(BattleCursor::Action);
         battle_cursor_->setRoleAndMagic(r, magic, level_index);
         int selected = battle_cursor_->run();
-        //È¡ÏûÑ¡ÔñÄ¿±êÔòÖØĞÂ½øÈëÑ¡Îä¹¦
+        //å–æ¶ˆé€‰æ‹©ç›®æ ‡åˆ™é‡æ–°è¿›å…¥é€‰æ­¦åŠŸ
         if (selected < 0)
         {
             continue;
@@ -1109,18 +1138,18 @@ void BattleScene::actUseMagic(Role* r)
 
 void BattleScene::actUseMagicSub(Role* r, Magic* magic)
 {
-    // Ã¿´Î¹¥»÷£¬Ã¿¸öÈËµÄÎÄ×Ö¶¯»­Êı¾İ
+    // æ¯æ¬¡æ”»å‡»ï¼Œæ¯ä¸ªäººçš„æ–‡å­—åŠ¨ç”»æ•°æ®
     std::vector<std::vector<Role::ActionShowInfo>> multi_shows;
 
     for (int i = 0; i <= GameUtil::sign(r->AttackTwice); i++)
     {
         int level_index = r->getMagicLevelIndex(magic->ID);
-        //¼ÆËãÉËº¦
+        //è®¡ç®—ä¼¤å®³
         r->PhysicalPower = GameUtil::limit(r->PhysicalPower - 3, 0, Role::getMaxValue()->PhysicalPower);
         r->MP = GameUtil::limit(r->MP - magic->calNeedMP(level_index), 0, r->MaxMP);
         calMagiclHurtAllEnemies(r, magic);
 
-        // ×öÏÔÊ¾²¿·Ö£¬ÓÉÓÚ¶à´Î¹¥»÷£¬²¢ÇÒÊı¾İ¶¯»­·ÖÀë£¬ĞèÒª·Ö¿ª±£´æÏÔÊ¾ĞÅÏ¢
+        // åšæ˜¾ç¤ºéƒ¨åˆ†ï¼Œç”±äºå¤šæ¬¡æ”»å‡»ï¼Œå¹¶ä¸”æ•°æ®åŠ¨ç”»åˆ†ç¦»ï¼Œéœ€è¦åˆ†å¼€ä¿å­˜æ˜¾ç¤ºä¿¡æ¯
         multi_shows.emplace_back();
         for (auto r : battle_roles_)
         {
@@ -1128,12 +1157,12 @@ void BattleScene::actUseMagicSub(Role* r, Magic* magic)
             {
                 if (magic->HurtType == 0)
                 {
-                    r->addShowString(convert::formatString("-%d", r->Show.BattleHurt), { 255, 20, 20, 255 });
+                    r->addShowString(fmt1::format("-{}", r->Show.BattleHurt), { 255, 20, 20, 255 });
                 }
                 else if (magic->HurtType == 1)
                 {
-                    r->addShowString(convert::formatString("-%d", r->Show.BattleHurt), { 160, 32, 240, 255 });
-                    // ÎüÄÚÁ¦²»×ö½¥±äÏÔÊ¾£¬Âé·³
+                    r->addShowString(fmt1::format("-{}", r->Show.BattleHurt), { 160, 32, 240, 255 });
+                    // å¸å†…åŠ›ä¸åšæ¸å˜æ˜¾ç¤ºï¼Œéº»çƒ¦
                     r->Show.BattleHurt = 0;
                 }
             }
@@ -1141,33 +1170,33 @@ void BattleScene::actUseMagicSub(Role* r, Magic* magic)
             r->Show.clear();
         }
 
-        //ÎäÑ§µÈ¼¶Ôö¼Ó
+        //æ­¦å­¦ç­‰çº§å¢åŠ 
         auto index = r->getMagicOfRoleIndex(magic);
         if (index >= 0)
         {
-            r->MagicLevel[index] += 1 + rng_.rand_int(2);
+            r->MagicLevel[index] += 1 + rand_.rand_int(2);
             GameUtil::limit2(r->MagicLevel[index], 0, MAX_MAGIC_LEVEL);
         }
-        printf("%s %s level is %d\n", PotConv::to_read(r->Name).c_str(), PotConv::to_read(magic->Name).c_str(), r->MagicLevel[index]);
+        fmt1::print("{} {} level is {}\n", r->Name, magic->Name, r->MagicLevel[index]);
     }
     r->Acted = 1;
 
-    // multi_showsĞèÒª¸´ÖÆ£¬ÒòÎªÒÑ¾­Àë¿ª´ËÕ»
+    // multi_showséœ€è¦å¤åˆ¶ï¼Œå› ä¸ºå·²ç»ç¦»å¼€æ­¤æ ˆ
     actionAnimation_ = [this, r, magic, multi_shows]() mutable
     {
         for (int i = 0; i < multi_shows.size(); i++)
         {
-            // ²¥·Å¹¥»÷»­Ãæ
+            // æ’­æ”¾æ”»å‡»ç”»é¢
             showMagicName(magic->Name);
             useMagicAnimation(r, magic);
 
-            // ½¥±äĞ§¹û
+            // æ¸å˜æ•ˆæœ
             std::vector<std::pair<int&, int>> animated_changes;
             for (int j = 0; j < multi_shows[i].size(); j++)
             {
-                // ¶ÁÈ¡±£´æµÄÎÄ×Ö¶¯»­Êı¾İ
+                // è¯»å–ä¿å­˜çš„æ–‡å­—åŠ¨ç”»æ•°æ®
                 battle_roles_[j]->Show = multi_shows[i][j];
-                // °ó¶¨£¬ÉúÃüÖµºÍÉËº¦Öµ
+                // ç»‘å®šï¼Œç”Ÿå‘½å€¼å’Œä¼¤å®³å€¼
                 animated_changes.emplace_back(battle_roles_[j]->HP, -battle_roles_[j]->Show.BattleHurt);
                 animated_changes.emplace_back(battle_roles_[j]->Progress, battle_roles_[j]->Show.ProgressChange);
             }
@@ -1190,8 +1219,8 @@ void BattleScene::actUsePoison(Role* r)
         auto r2 = getSelectedRole();
         if (r2)
         {
-            int v = GameUtil::usePoison(r, r2);
-            r2->addShowString(convert::formatString("%+d", v), { 20, 255, 20, 255 });
+            int v = r->usePoison(r2);
+            r2->addShowString(fmt1::format("{:+}", v), { 20, 255, 20, 255 });
             r->ExpGot += v;
         }
         r->PhysicalPower = GameUtil::limit(r->PhysicalPower - 3, 0, Role::getMaxValue()->PhysicalPower);
@@ -1218,8 +1247,8 @@ void BattleScene::actDetoxification(Role* r)
         auto r2 = getSelectedRole();
         if (r2)
         {
-            int v = GameUtil::detoxification(r, r2);
-            r2->addShowString(convert::formatString("-%d", -v), { 20, 200, 255, 255 });
+            int v = r->detoxification(r2);
+            r2->addShowString(fmt1::format("-{}", -v), { 20, 200, 255, 255 });
             r->ExpGot += v;
         }
         r->PhysicalPower = GameUtil::limit(r->PhysicalPower - 5, 0, Role::getMaxValue()->PhysicalPower);
@@ -1246,8 +1275,8 @@ void BattleScene::actMedicine(Role* r)
         auto r2 = getSelectedRole();
         if (r2)
         {
-            int v = GameUtil::medicine(r, r2);
-            r2->addShowString(convert::formatString("-%d", abs(v)), { 255, 255, 200, 255 });
+            int v = r->medicine(r2);
+            r2->addShowString(fmt1::format("-{}", abs(v)), { 255, 255, 200, 255 });
             r->ExpGot += v;
         }
         r->PhysicalPower = GameUtil::limit(r->PhysicalPower - 5, 0, Role::getMaxValue()->PhysicalPower);
@@ -1262,7 +1291,7 @@ void BattleScene::actMedicine(Role* r)
 
 void BattleScene::actUseHiddenWeapon(Role* r)
 {
-    // ÍøÂç½»Á÷£¬²»¹ÜÎïÆ·
+    // ç½‘ç»œäº¤æµï¼Œä¸ç®¡ç‰©å“
     auto item_menu = std::make_shared<BattleItemMenu>();
     item_menu->setRole(r);
     item_menu->setForceItemType(3);
@@ -1283,7 +1312,7 @@ void BattleScene::actUseHiddenWeapon(Role* r)
             {
                 v = calHiddenWeaponHurt(r, r2, item);
                 r2->Show.BattleHurt = v;
-                r2->addShowString(convert::formatString("-%d", v), { 255, 20, 20, 255 });
+                r2->addShowString(fmt1::format("-{}", v), { 255, 20, 20, 255 });
             }
             r->PhysicalPower = GameUtil::limit(r->PhysicalPower - 5, 0, Role::getMaxValue()->PhysicalPower);
             item_menu->addItem(item, -1);
@@ -1306,7 +1335,7 @@ void BattleScene::actUseHiddenWeapon(Role* r)
 
 void BattleScene::actUseDrug(Role* r)
 {
-    // ÍøÂç½»Á÷£¬²»¹ÜÎïÆ·
+    // ç½‘ç»œäº¤æµï¼Œä¸ç®¡ç‰©å“
     auto item_menu = std::make_shared<BattleItemMenu>();
     item_menu->setForceItemType(2);
     item_menu->setRole(r);
@@ -1315,13 +1344,13 @@ void BattleScene::actUseDrug(Role* r)
     if (item)
     {
         Role r0 = *r;
-        GameUtil::useItem(r, item);
+        r->useItem(item);
         item_menu->addItem(item, -1);
         r->Acted = 1;
         actionAnimation_ = [this, r, r0, item]() mutable
         {
             auto df = std::make_shared<ShowRoleDifference>(&r0, r);
-            df->setText(convert::formatString("%s·şÓÃ%s", r->Name, item->Name));
+            df->setText(fmt1::format("{}æœç”¨{}", r->Name, item->Name));
             df->setShowHead(false);
             df->setPosition(250, 220);
             df->setStayFrame(40);
@@ -1332,7 +1361,7 @@ void BattleScene::actUseDrug(Role* r)
 
 void BattleScene::actWait(Role* r)
 {
-    //µÈ´ı£¬½«×Ô¼º²åÈëµ½×îºóÒ»¸öÃ»ĞĞ¶¯µÄÈËµÄºóÃæ
+    //ç­‰å¾…ï¼Œå°†è‡ªå·±æ’å…¥åˆ°æœ€åä¸€ä¸ªæ²¡è¡ŒåŠ¨çš„äººçš„åé¢
     for (int i = 1; i < battle_roles_.size(); i++)
     {
         if (battle_roles_[i]->Acted == 0)
@@ -1369,18 +1398,15 @@ void BattleScene::actAuto(Role* r)
 
 void BattleScene::actRest(Role* r)
 {
-    if (!r->Moved)
-    {
-        r->PhysicalPower = GameUtil::limit(r->PhysicalPower + 5, 0, Role::getMaxValue()->PhysicalPower);
-        r->HP = GameUtil::limit(r->HP + 0.05 * r->MaxHP, 0, r->MaxHP);
-        r->MP = GameUtil::limit(r->MP + 0.05 * r->MaxMP, 0, r->MaxMP);
-    }
+    r->PhysicalPower = GameUtil::limit(r->PhysicalPower + 5, 0, Role::getMaxValue()->PhysicalPower);
+    r->HP = GameUtil::limit(r->HP + 0.05 * r->MaxHP, 0, r->MaxHP);
+    r->MP = GameUtil::limit(r->MP + 0.05 * r->MaxMP, 0, r->MaxMP);
     r->Acted = 1;
 }
 
 void BattleScene::moveAnimation(Role* r, int x, int y)
 {
-    //´ÓÄ¿±êÍù»ØÕÒÈ·¶¨Â·Ïß
+    //ä»ç›®æ ‡å¾€å›æ‰¾ç¡®å®šè·¯çº¿
     std::vector<Point> way;
     auto check_next = [&](Point p1, int step) -> bool
     {
@@ -1430,12 +1456,12 @@ void BattleScene::moveAnimation(Role* r, int x, int y)
     select_layer_.setAll(-1);
 }
 
-//Ê¹ÓÃÎäÑ§¶¯»­
+//ä½¿ç”¨æ­¦å­¦åŠ¨ç”»
 void BattleScene::useMagicAnimation(Role* r, Magic* m)
 {
     if (r && m)
     {
-        Audio::getInstance()->playASound(m->SoundID);    //ÕâÀï²¥·ÅÒôĞ§ÑÏ¸ñËµ²»ÕıÈ·£¬²»¹ÜÁË
+        Audio::getInstance()->playASound(m->SoundID);    //è¿™é‡Œæ’­æ”¾éŸ³æ•ˆä¸¥æ ¼è¯´ä¸æ­£ç¡®ï¼Œä¸ç®¡äº†
         actionAnimation(r, m->MagicType, m->EffectID, r->Attack / 20);
     }
 }
@@ -1448,7 +1474,7 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
     }
     if (r->isAuto())
     {
-        //×Ô¶¯µÄÇé›rÏÂÃæÏòÒ»¸öµĞÈË£¬·ñÔò¿´×ÅºÜÆæ¹Ö
+        //è‡ªåŠ¨çš„æƒ…æ³ä¸‹é¢å‘ä¸€ä¸ªæ•Œäººï¼Œå¦åˆ™çœ‹ç€å¾ˆå¥‡æ€ª
         setFaceTowardsNearest(r, true);
     }
     auto frame_count = r->FightFrame[style];
@@ -1456,7 +1482,7 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
     //Audio::getInstance()->playASound(style);
     for (action_frame_ = 0; action_frame_ < frame_count; action_frame_++)
     {
-        // Èç¹ûÓĞÌØĞ§¶¯»­£¬Ì§ÊÖ1Ö¡ºóÔËĞĞ
+        // å¦‚æœæœ‰ç‰¹æ•ˆåŠ¨ç”»ï¼ŒæŠ¬æ‰‹1å¸§åè¿è¡Œ
         if (action_frame_ == 1)
         {
             if (r->Show.Effect != -1 || !r->Show.ShowStrings.empty())
@@ -1475,11 +1501,11 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
     }
     action_frame_ = frame_count - 1;
     effect_id_ = effect_id;
-    auto path = convert::formatString("eft/eft%03d", effect_id_);
+    auto path = fmt1::format("eft/eft{:03}", effect_id_);
     auto effect_count = TextureManager::getInstance()->getTextureGroupCount(path);
     Audio::getInstance()->playESound(effect_id);
 
-    //ÓÉ½üµ½Ô¶µÄ¶¯»­Ğ§¹û
+    //ç”±è¿‘åˆ°è¿œçš„åŠ¨ç”»æ•ˆæœ
     int min_dis = 9999;
     int max_dis = 0;
     for (int ix = 0; ix < COORD_COUNT; ix++)
@@ -1505,8 +1531,8 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
         }
         if (shake > 0)
         {
-            x_ = rng_.rand_int(shake) - rng_.rand_int(shake);
-            y_ = rng_.rand_int(shake) - rng_.rand_int(shake);
+            x_ = rand_.rand_int(shake) - rand_.rand_int(shake);
+            y_ = rand_.rand_int(shake) - rand_.rand_int(shake);
             //Engine::getInstance()->setWindowPosition(x0 + x_ * 10, y0 + y_ * 10);
         }
         drawAndPresent(animation_delay_);
@@ -1520,8 +1546,8 @@ void BattleScene::actionAnimation(Role* r, int style, int effect_id, int shake /
     y_ = 0;
 }
 
-//r1Ê¹ÓÃÎä¹¦magic¹¥»÷r2µÄÉËº¦£¬½á¹ûÎªÒ»ÕıÊı
-int BattleScene::calMagicHurt(Role* r1, Role* r2, Magic* magic)
+//r1ä½¿ç”¨æ­¦åŠŸmagicæ”»å‡»r2çš„ä¼¤å®³ï¼Œç»“æœä¸ºä¸€æ­£æ•°
+int BattleScene::calMagicHurt(Role* r1, Role* r2, Magic* magic, int dis)
 {
     int level_index = Save::getInstance()->getRoleLearnedMagicLevelIndex(r1, magic);
     level_index = magic->calMaxLevelIndexByMP(r1->MP, level_index);
@@ -1529,12 +1555,12 @@ int BattleScene::calMagicHurt(Role* r1, Role* r2, Magic* magic)
     {
         if (r1->MP <= 10)
         {
-            return 1 + rng_.rand_int(10);
+            return 1 + rand_.rand_int(10);
         }
         int attack = r1->Attack + magic->Attack[level_index] / 3;
         int defence = r2->Defence;
 
-        //×°±¸µÄĞ§¹û
+        //è£…å¤‡çš„æ•ˆæœ
         if (r1->Equip0 >= 0)
         {
             auto i = Save::getInstance()->getItem(r1->Equip0);
@@ -1557,38 +1583,43 @@ int BattleScene::calMagicHurt(Role* r1, Role* r2, Magic* magic)
         }
 
         int v = attack - defence;
-        //¾àÀëË¥¼õ
-        int dis = calRoleDistance(r1, r2);
-        v = v / exp((dis - 1) / 10);
-
-        v += rng_.rand_int(10) - rng_.rand_int(10);
+        //è·ç¦»è¡°å‡
+        if (dis == -1)
+        {
+            dis = calRoleDistance(r1, r2);
+        }
+        if (dis > 1)
+        {
+            v /= exp((dis - 1) / 10.0);
+        }
+        v += rand_.rand_int(10) - rand_.rand_int(10);
         if (v < 10)
         {
-            v = 1 + rng_.rand_int(10);
+            v = 1 + rand_.rand_int(10);
         }
-        //v = 999;  //²âÊÔÓÃ
+        //v = 999;  //æµ‹è¯•ç”¨
         return v;
     }
     else if (magic->HurtType == 1)
     {
         int v = magic->HurtMP[level_index];
-        v += rng_.rand_int(10) - rng_.rand_int(10);
+        v += rand_.rand_int(10) - rand_.rand_int(10);
         if (v < 10)
         {
-            v = 1 + rng_.rand_int(10);
+            v = 1 + rand_.rand_int(10);
         }
         return v;
     }
     return 0;
 }
 
-//¼ÆËãÈ«²¿ÈËÎïµÄÉËº¦
+//è®¡ç®—å…¨éƒ¨äººç‰©çš„ä¼¤å®³
 int BattleScene::calMagiclHurtAllEnemies(Role* r, Magic* m, bool simulation)
 {
     int total = 0;
     for (auto r2 : battle_roles_)
     {
-        //·ÇÎÒ·½ÇÒ±»»÷ÖĞ£¨¼´ËùÔÚÎ»ÖÃµÄĞ§¹û²ã·Ç¸º£©
+        //éæˆ‘æ–¹ä¸”è¢«å‡»ä¸­ï¼ˆå³æ‰€åœ¨ä½ç½®çš„æ•ˆæœå±‚éè´Ÿï¼‰
         if (r2->Team != r->Team && haveEffect(r2->X(), r2->Y()))
         {
             int hurt = calMagicHurt(r, r2, m);
@@ -1616,7 +1647,7 @@ int BattleScene::calMagiclHurtAllEnemies(Role* r, Magic* m, bool simulation)
             }
             else
             {
-                //ÕâÀïÊÇ¼ÆËãai·ÖÊı
+                //è¿™é‡Œæ˜¯è®¡ç®—aiåˆ†æ•°
                 if (r->AttackTwice)
                 {
                     hurt *= 2;
@@ -1639,13 +1670,16 @@ int BattleScene::calMagiclHurtAllEnemies(Role* r, Magic* m, bool simulation)
     return total;
 }
 
-//·µ»ØÖµÎªÒ»ÕıÊı
-int BattleScene::calHiddenWeaponHurt(Role* r1, Role* r2, Item* item)
+//è¿”å›å€¼ä¸ºä¸€æ­£æ•°
+int BattleScene::calHiddenWeaponHurt(Role* r1, Role* r2, Item* item, int dis)
 {
     int v = r1->HiddenWeapon - item->AddHP;
-    int dis = calRoleDistance(r1, r2);
+    v += rand_.rand_int(10) - rand_.rand_int(10);
+    if (dis == -1)
+    {
+        dis = calRoleDistance(r1, r2);
+    }
     v = v / exp((dis - 1) / 10);
-    v += rng_.rand_int(10) - rng_.rand_int(10);
     if (v < 1)
     {
         v = 1;
@@ -1663,14 +1697,14 @@ void BattleScene::showMagicName(std::string name)
     magic_name->run();
 }
 
-//ÏÔÊ¾Êı×Ö£¬Í¬Ê±ÏÔÊ¾´òÍË½ø¶ÈÌõ
-// delay: ÑÓ³Ù£¬Ä¬ÈÏ2
-// floating: Êı×ÖÊÇ·ñÆ¯¸¡
-// std::vector<std::pair<int&, int>> ½¥±ä
-// firstÎª½¥±ä¶ÔÏó£¬secondÎª½¥±äÊıÖµ
+//æ˜¾ç¤ºæ•°å­—ï¼ŒåŒæ—¶æ˜¾ç¤ºæ‰“é€€è¿›åº¦æ¡
+// delay: å»¶è¿Ÿï¼Œé»˜è®¤2
+// floating: æ•°å­—æ˜¯å¦æ¼‚æµ®
+// std::vector<std::pair<int&, int>> æ¸å˜
+// firstä¸ºæ¸å˜å¯¹è±¡ï¼Œsecondä¸ºæ¸å˜æ•°å€¼
 void BattleScene::showNumberAnimation(int delay, bool floating, const std::vector<std::pair<int&, int>>& animated_changes)
 {
-    //ÅĞ¶ÏÊÇ·ñÓĞĞèÒªÏÔÊ¾µÄÊı×Ö
+    //åˆ¤æ–­æ˜¯å¦æœ‰éœ€è¦æ˜¾ç¤ºçš„æ•°å­—
     bool need_show = false;
     int single_loop_frames = 15;
     for (auto r : battle_roles_)
@@ -1682,7 +1716,7 @@ void BattleScene::showNumberAnimation(int delay, bool floating, const std::vecto
         if (r->Show.Effect != -1)
         {
             need_show = true;
-            auto path = convert::formatString("eft/eft%03d", r->Show.Effect);
+            auto path = fmt1::format("eft/eft{:03}", r->Show.Effect);
             auto effect_count = TextureManager::getInstance()->getTextureGroupCount(path);
             single_loop_frames = (std::max)(single_loop_frames, effect_count);
         }
@@ -1703,10 +1737,10 @@ void BattleScene::showNumberAnimation(int delay, bool floating, const std::vecto
             for (auto r : battle_roles_)
             {
                 auto p = getPositionOnWindow(r->X(), r->Y(), man_x_, man_y_);
-                // ÓĞÔ½½ç±£»¤£¬Ö±½ÓÏÔÊ¾¾ÍºÃÁË
+                // æœ‰è¶Šç•Œä¿æŠ¤ï¼Œç›´æ¥æ˜¾ç¤ºå°±å¥½äº†
                 if (r->Show.Effect != -1)
                 {
-                    auto path = convert::formatString("eft/eft%03d", r->Show.Effect);
+                    auto path = fmt1::format("eft/eft{:03}", r->Show.Effect);
                     TextureManager::getInstance()->renderTexture(path, i_frame, p.x, p.y, { 255, 255, 255, 255 }, 224);
                 }
                 if (!r->Show.ShowStrings.empty())
@@ -1719,15 +1753,15 @@ void BattleScene::showNumberAnimation(int delay, bool floating, const std::vecto
                         int y = p.y - i_frame * 2 + y_pos;
                         if (!floating)
                         {
-                            // µ÷ÕûÒ»ÏÂ
+                            // è°ƒæ•´ä¸€ä¸‹
                             y = p.y - total_frames + y_pos;
                         }
-                        Font::getInstance()->draw(show_string.Text, show_string.Size, x, y, show_string.Color, 255 - 255 / total_frames * i_frame);
+                        Font::getInstance()->draw(show_string.Text, show_string.Size, x, y, *(BP_Color*)&show_string.Color, 255 - 255 / total_frames * i_frame);
                         y_pos += show_string.Size + 2;
                     }
                 }
             }
-            // ½¥±ä
+            // æ¸å˜
             for (auto& change : animated_changes)
             {
                 change.first += change.second / total_frames;
@@ -1736,7 +1770,7 @@ void BattleScene::showNumberAnimation(int delay, bool floating, const std::vecto
         drawAndPresent(delay, drawNumber);
     }
 
-    // ½¥±ä²»ÄÜ±»Õû³ı£¬ËùÒÔ¼Ó»ØÀ´£¬ÔÙÖØĞÂËã
+    // æ¸å˜ä¸èƒ½è¢«æ•´é™¤ï¼Œæ‰€ä»¥åŠ å›æ¥ï¼Œå†é‡æ–°ç®—
     for (auto& change : animated_changes)
     {
         change.first += change.second - total_frames * (change.second / total_frames);
@@ -1749,12 +1783,12 @@ void BattleScene::renderExtraRoleInfo(Role* r, int x, int y)
     {
         return;
     }
-    // »­¸öÑªÌõ
+    // ç”»ä¸ªè¡€æ¡
     BP_Color outline_color = { 0, 0, 0, 128 };
-    BP_Color background_color = { 0, 255, 0, 128 };    // ÎÒ·½ÂÌÉ«
+    BP_Color background_color = { 0, 255, 0, 128 };    // æˆ‘æ–¹ç»¿è‰²
     if (r->Team == 1)
     {
-        // µĞ·½ºìÉ«
+        // æ•Œæ–¹çº¢è‰²
         background_color = { 255, 0, 0, 128 };
     }
     int hp_max_w = 24;
@@ -1778,7 +1812,7 @@ void BattleScene::renderExtraRoleInfo(Role* r, int x, int y)
     Engine::getInstance()->renderSquareTexture(&r1, background_color, 192 * alpha);
 
     //Engine::getInstance()->fillColor(background_color, hp_x, hp_y, perc * hp_max_w, hp_h);
-    // ÑÏ½ûÍÂ²Û£¬»­¿ò¿ò
+    // ä¸¥ç¦åæ§½ï¼Œç”»æ¡†æ¡†
     //Engine::getInstance()->fillColor(outline_color, hp_x, hp_y, hp_max_w, 1);
     //Engine::getInstance()->fillColor(outline_color, hp_x, hp_y + hp_h, hp_max_w, 1);
     //Engine::getInstance()->fillColor(outline_color, hp_x, hp_y, 1, hp_h);
@@ -1787,7 +1821,7 @@ void BattleScene::renderExtraRoleInfo(Role* r, int x, int y)
 
 void BattleScene::clearDead()
 {
-    //ÅĞ¶ÏÊÇ·ñÓĞÈËÓ¦ÍË³¡
+    //åˆ¤æ–­æ˜¯å¦æœ‰äººåº”é€€åœº
     bool found_dead = false;
     for (auto r : battle_roles_)
     {
@@ -1802,7 +1836,7 @@ void BattleScene::clearDead()
         return;
     }
 
-    //ÍË³¡¶¯»­£¬ÇåÀíÈËÎï
+    //é€€åœºåŠ¨ç”»ï¼Œæ¸…ç†äººç‰©
     for (int i = 0; i <= 25; i++)
     {
         dead_alpha_ = 255 - i * 10;
@@ -1824,21 +1858,22 @@ void BattleScene::clearDead()
         else
         {
             r->setPosition(-1, -1);
+            r->HP = 10;
         }
     }
     battle_roles_ = alive;
 }
 
-//ÖĞ¶¾µÄĞ§¹û
+//ä¸­æ¯’çš„æ•ˆæœ
 void BattleScene::poisonEffect(Role* r)
 {
     if (r)
     {
-        //¿¹¶¾¸ßÕß»á×Ô¶¯½â¶¾
+        //æŠ—æ¯’é«˜è€…ä¼šè‡ªåŠ¨è§£æ¯’
         r->Poison -= r->AntiPoison;
         GameUtil::limit2(r->Poison, 0, Role::getMaxValue()->Poison);
         r->HP -= r->Poison / 3;
-        //×îµÍ¿Ûµ½1µã
+        //æœ€ä½æ‰£åˆ°1ç‚¹
         if (r->HP < 1)
         {
             r->HP = 1;
@@ -1851,7 +1886,7 @@ int BattleScene::getTeamMateCount(int team)
     int count = 0;
     for (auto r : battle_roles_)
     {
-        if (r->Team == team)
+        if (r->Team == team && !r->Dead)
         {
             count++;
         }
@@ -1859,19 +1894,19 @@ int BattleScene::getTeamMateCount(int team)
     return count;
 }
 
-//¼ì²éÊÇ·ñÓĞÒ»·½È«Ãğ
-//·µ»Ø¸ºÖµ±íÊ¾ÈÔĞè³ÖĞø£¬·µ»Ø·Ç¸ºÔòÎªÊ¤Àû·½µÄteam±ê¼Ç
-//Êµ¼ÊÉÏÖ»ÊÇ¼ì²âÎÒ·½ÈËÊıÓëµ±Ç°×ÜÈËÊıÊÇ·ñÏàµÈ»òÕßÎª0
-//¸ü¸´ÔÓµÄÅĞ¶ÏÇëÊ¹ÓÃset»òÕßmap
-//0-ÎÒ·½Ê¤£¬1-µĞ·½Ê¤£¬-1-Ê¤¸ºÎ´·Ö
+//æ£€æŸ¥æ˜¯å¦æœ‰ä¸€æ–¹å…¨ç­
+//è¿”å›è´Ÿå€¼è¡¨ç¤ºä»éœ€æŒç»­ï¼Œè¿”å›éè´Ÿåˆ™ä¸ºèƒœåˆ©æ–¹çš„teamæ ‡è®°
+//å®é™…ä¸Šåªæ˜¯æ£€æµ‹æˆ‘æ–¹äººæ•°ä¸å½“å‰æ€»äººæ•°æ˜¯å¦ç›¸ç­‰æˆ–è€…ä¸º0
+//æ›´å¤æ‚çš„åˆ¤æ–­è¯·ä½¿ç”¨setæˆ–è€…map
+//0-æˆ‘æ–¹èƒœï¼Œ1-æ•Œæ–¹èƒœï¼Œ-1-èƒœè´Ÿæœªåˆ†
 int BattleScene::checkResult()
 {
     int team0 = getTeamMateCount(0);
-    if (team0 == battle_roles_.size())
+    if (team0 > 0 && team0 == battle_roles_.size())
     {
         return 0;
     }
-    if (team0 == 0)
+    if (team0 == 0 && battle_roles_.size() > 0)
     {
         return 1;
     }
@@ -1883,6 +1918,7 @@ void BattleScene::calExpGot()
     head_self_->setVisible(false);
 
     std::vector<Role*> alive_teammate;
+
     if (result_ == 0)
     {
         for (auto r : battle_roles_)
@@ -1897,21 +1933,30 @@ void BattleScene::calExpGot()
     {
         alive_teammate = friends_;
     }
+
     if (alive_teammate.empty())
     {
-        return;
+        //return;
     }
-    //»¹ÔÚ³¡µÄÈË»ñµÃ¾­Ñé
+    //è¿˜åœ¨åœºçš„äººè·å¾—ç»éªŒ
     for (auto r : alive_teammate)
     {
         r->ExpGot += info_->Exp / alive_teammate.size();
     }
 
     auto show_exp = std::make_shared<ShowExp>();
+    if (result_ == 0)
+    {
+        show_exp->setText("å‹åˆ©ç²å¾—ç¶“é©—");
+    }
+    else
+    {
+        show_exp->setText("å¤±æ•—ä¹Ÿæœ‰ç¶“é©—");
+    }
     show_exp->setRoles(alive_teammate);
     show_exp->run();
 
-    //Éı¼¶£¬ĞŞÁ¶ÎïÆ·
+    //å‡çº§ï¼Œä¿®ç‚¼ç‰©å“
     auto diff = std::make_shared<ShowRoleDifference>();
     for (auto r : alive_teammate)
     {
@@ -1920,29 +1965,29 @@ void BattleScene::calExpGot()
             break;
         }
 
-        Role r0 = *r;    //ÓÃÓÚ±È½ÏµÄ×´Ì¬
+        Role r0 = *r;    //ç”¨äºæ¯”è¾ƒçš„çŠ¶æ€
 
         auto item = Save::getInstance()->getItem(r->PracticeItem);
 
         if (r->Level >= Role::getMaxValue()->Level)
         {
-            //ÒÑÂú¼¶£¬È«¼Óµ½ÎïÆ·¾­Ñé
+            //å·²æ»¡çº§ï¼Œå…¨åŠ åˆ°ç‰©å“ç»éªŒ
             r->ExpForItem += r->ExpGot;
         }
         else if (item)
         {
-            //Î´Âú¼¶£¬Æ½·Ö¾­Ñé
+            //æœªæ»¡çº§ï¼Œå¹³åˆ†ç»éªŒ
             r->Exp += r->ExpGot / 2;
             r->ExpForItem += r->ExpGot / 2;
         }
         else
         {
-            //ÆäÓàÇé¿öÈ«¼Óµ½ÈËÎï¾­Ñé
+            //å…¶ä½™æƒ…å†µå…¨åŠ åˆ°äººç‰©ç»éªŒ
             r->Exp += r->ExpGot;
         }
         r->ExpForMakeItem += r->ExpGot;
 
-        //±ÜÃâÔ½½ç
+        //é¿å…è¶Šç•Œ
         if (r->Exp < r0.Exp)
         {
             r->Exp = Role::getMaxValue()->Exp;
@@ -1952,34 +1997,34 @@ void BattleScene::calExpGot()
             r->ExpForItem = Role::getMaxValue()->Exp;
         }
 
-        //Éı¼¶
+        //å‡çº§
         int change = 0;
-        while (GameUtil::canLevelUp(r))
+        while (r->canLevelUp())
         {
-            GameUtil::levelUp(r);
+            r->levelUp();
             change++;
         }
         if (change)
         {
             diff->setTwinRole(&r0, r);
-            diff->setText("Éı¼‰");
+            diff->setText("å‡ç´š");
             diff->run();
         }
 
-        //ĞŞÁ¶ÃØóÅ
+        //ä¿®ç‚¼ç§˜ç¬ˆ
         if (item)
         {
             r0 = *r;
             change = 0;
-            while (GameUtil::canFinishedItem(r))
+            while (r->canFinishedItem())
             {
-                GameUtil::useItem(r, item);
+                r->useItem(item);
                 change++;
             }
             if (change)
             {
                 diff->setTwinRole(&r0, r);
-                diff->setText(convert::formatString("ĞŞŸ’%s³É¹¦", item->Name));
+                diff->setText(fmt1::format("ä¿®ç…‰{}æˆåŠŸ", item->Name));
                 diff->run();
             }
             if (item->MakeItem[0] >= 0 && r->ExpForMakeItem >= item->NeedExpForMakeItem && Event::getInstance()->haveItemBool(item->NeedMaterial))
@@ -1992,9 +2037,14 @@ void BattleScene::calExpGot()
                         make_item.push_back({ item->MakeItem[i], item->MakeItemCount[i] });
                     }
                 }
-                int index = rng_.rand_int(make_item.size());
+                int index = rand_.rand_int(make_item.size());
+                auto text = std::make_shared<TextBox>();
+                text->setText(fmt1::format("{}ä¿®ç…‰{}è£½è—¥æˆåŠŸ", r->Name, item->Name));
+                text->setPosition(300, 160);
+                addChild(text);
                 Event::getInstance()->addItem(make_item[index].item_id, make_item[index].count);
                 Event::getInstance()->addItemWithoutHint(item->NeedMaterial, -1);
+                removeChild(text);
                 r->ExpForMakeItem = 0;
             }
         }
@@ -2007,33 +2057,46 @@ void BattleScene::setupNetwork(std::unique_ptr<BattleNetwork> net, int battle_id
     setID(battle_id);
 }
 
+void BattleScene::setupRolePosition(Role* r, int team, int x, int y)
+{
+    if (r == nullptr)
+    {
+        return;
+    }
+    r->setPosition(x, y);
+    r->Team = team;
+    readFightFrame(r);
+    r->FaceTowards = rand_.rand_int(4);
+    battle_roles_.push_back(r);
+}
+
 void BattleScene::receiveAction(Role* r)
 {
-    // Èç¹ûÊÇµĞÈË£¬Ôò»ñÈ¡µĞÈËĞĞ¶¯£¬¼Ù×°µĞÈËÊÇ¸öAI
-    // ¼º·½ĞĞ¶¯µÄÊ±ºòÒ²ÒªÍ¬Ê±¼ÇÂ¼AI
+    // å¦‚æœæ˜¯æ•Œäººï¼Œåˆ™è·å–æ•Œäººè¡ŒåŠ¨ï¼Œå‡è£…æ•Œäººæ˜¯ä¸ªAI
+    // å·±æ–¹è¡ŒåŠ¨çš„æ—¶å€™ä¹Ÿè¦åŒæ—¶è®°å½•AI
     BattleNetwork::SerializableBattleAction action;
     auto f = [](DrawableOnCall* d)
     {
-        Font::getInstance()->draw("µÈ´ı¶Ô·½Íæ¼ÒĞĞ¶¯...", 40, 30, 30, { 200, 200, 50, 255 });
+        Font::getInstance()->draw("ç­‰å¾…å¯¹æ–¹ç©å®¶è¡ŒåŠ¨...", 40, 30, 30, { 200, 200, 50, 255 });
     };
     auto waitThis = std::make_shared<DrawableOnCall>(f);
-    // getOpponentAction¶ÁÈ¡Íê±Ï»áµ÷ÓÃ´Ëº¯Êı¹Ø±ÕÏÔÊ¾
+    // getOpponentActionè¯»å–å®Œæ¯•ä¼šè°ƒç”¨æ­¤å‡½æ•°å…³é—­æ˜¾ç¤º
     auto exit = [&waitThis, this](std::error_code err, std::size_t bytes)
     {
-        printf("recv %s\n", err.message().c_str());
+        fmt1::print("recv {}\n", err.message());
         waitThis->setExit(true);
         if (err)
         {
             this->setExit(true);
         }
     };
-    // ´ò¿ªºó¼È¿ªÊ¼»ñÈ¡Êı¾İ
+    // æ‰“å¼€åæ—¢å¼€å§‹è·å–æ•°æ®
     waitThis->setEntrance([this, &action, exit]()
-    {
-        network_->getOpponentAction(action, exit);
-    });
+        {
+            network_->getOpponentAction(action, exit);
+        });
     waitThis->run();
-    // ÕâÀï·µ»Øºó£¬¾ÍÒÑ¾­»ñµÃaction
+    // è¿™é‡Œè¿”å›åï¼Œå°±å·²ç»è·å¾—action
     action.print();
     r->Network_Action = action.Action;
     r->Network_ActionX = action.ActionX;

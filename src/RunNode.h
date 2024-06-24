@@ -1,6 +1,5 @@
 #pragma once
 #include "Engine.h"
-#include "TextureManager.h"
 #include <functional>
 #include <memory>
 #include <vector>
@@ -13,11 +12,12 @@ class RunNode : public std::enable_shared_from_this<RunNode>
 {
 private:
     static std::vector<std::shared_ptr<RunNode>> root_;    //所有需要绘制的内容都存储在这个静态向量中
-    static int prev_present_ticks_;
-    static int refresh_interval_;
+    static double global_prev_present_ticks_;
+    static double refresh_interval_;
 
 private:
     bool is_private_ = false;
+    double prev_present_ticks_ = 0;
 
 protected:
     std::vector<std::shared_ptr<RunNode>> childs_;
@@ -48,10 +48,10 @@ public:
     RunNode() {}
     virtual ~RunNode();
 
-    static void setRefreshInterval(int i) { refresh_interval_ = i; }
-    static int getRefreshInterval() { return refresh_interval_; }
+    static void setRefreshInterval(double i) { refresh_interval_ = i; }
+    static double getRefreshInterval() { return refresh_interval_; }
 
-    static int getShowTimes() { return prev_present_ticks_ / refresh_interval_; }
+    static int getShowTimes() { return global_prev_present_ticks_ / refresh_interval_; }
 
     static void drawAll();
 
@@ -100,6 +100,12 @@ public:
 
     bool inSide(int x, int y)
     {
+        int w, h;
+        int w1, h1;
+        Engine::getInstance()->getWindowSize(w, h);
+        Engine::getInstance()->getStartWindowSize(w1, h1);
+        x = x * w1 / w;
+        y = y * h1 / h;
         return x > x_ && x < x_ + w_ && y > y_ && y < y_ + h_;
     }
 
@@ -113,21 +119,21 @@ public:
     //状态
     enum State
     {
-        Normal,
-        Pass,
-        Press,
+        NodeNormal,
+        NodePass,
+        NodePress,
     };
 
     enum Direct
     {
-        None,
-        Left,
-        Up,
-        Right,
-        Down
+        DIrectNone,
+        DirectLeft,
+        DirectUp,
+        DirectRight,
+        DirectDown,
     };
 
-    int state_ = Normal;
+    int state_ = NodeNormal;
     int getState() { return state_; }
     void setState(int s) { state_ = s; }
 
@@ -179,12 +185,14 @@ public:
     bool isPressOK(BP_Event& e)
     {
         return (e.type == BP_KEYUP && (e.key.keysym.sym == BPK_RETURN || e.key.keysym.sym == BPK_SPACE))
-            || (e.type == BP_MOUSEBUTTONUP && e.button.button == BP_BUTTON_LEFT);
+            || (e.type == BP_MOUSEBUTTONUP && e.button.button == BP_BUTTON_LEFT)
+            || (e.type == BP_CONTROLLERBUTTONUP && e.cbutton.button == BP_CONTROLLER_BUTTON_A);
     }
     bool isPressCancel(BP_Event& e)
     {
         return (e.type == BP_KEYUP && e.key.keysym.sym == BPK_ESCAPE)
-            || (e.type == BP_MOUSEBUTTONUP && e.button.button == BP_BUTTON_RIGHT);
+            || (e.type == BP_MOUSEBUTTONUP && e.button.button == BP_BUTTON_RIGHT)
+            || (e.type == BP_CONTROLLERBUTTONUP && e.cbutton.button == BP_CONTROLLER_BUTTON_B);
     }
 
 private:
@@ -219,9 +227,22 @@ public:
         return nullptr;
     }
 
+    bool checkPrevTimeElapsed(int64_t ms)
+    {
+        auto t = Engine::getTicks();
+        if (t - prev_present_ticks_ >= ms)
+        {
+            prev_present_ticks_ = t;
+            return true;
+        }
+        return false;
+    }
+
     //每个节点应自行定义返回值，
     //需要普通退出功能的子节点，请使用下面两个宏，如退出的形式不同请自行实现
     //注意子类的子类可能会出现继承关系，需视情况处理
-#define DEFAULT_OK_EXIT virtual void onPressedOK() override { exitWithResult(0); }
-#define DEFAULT_CANCEL_EXIT virtual void onPressedCancel() override { exitWithResult(-1); }
+#define DEFAULT_OK_EXIT \
+    virtual void onPressedOK() override { exitWithResult(0); }
+#define DEFAULT_CANCEL_EXIT \
+    virtual void onPressedCancel() override { exitWithResult(-1); }
 };

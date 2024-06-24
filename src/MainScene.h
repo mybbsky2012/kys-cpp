@@ -5,22 +5,6 @@
 #include "Scene.h"
 #include "Types.h"
 
-class ParticleWeather : public RunNode, public ParticleExample
-{
-public:
-    //×¢ÒâÕâ¸ö¼Ì³Ğ·½·¨±È½Ï³¶µ­£¬ÆäËûÊ±ºò¾¡Á¿²»ÒªÕâÑùÓÃ
-    virtual void draw() override
-    {
-        int c = ParticleSystem::draw();
-        Engine::getInstance()->resetRenderTimes(Engine::getInstance()->getRenderTimes() + c);
-    }
-    virtual void setPosition(int x, int y)
-    {
-        RunNode::setPosition(x, y);
-        ParticleSystem::setPosition(x, y);
-    }
-};
-
 class MainScene : public Scene
 {
 public:
@@ -40,21 +24,21 @@ public:
 
     void divide2(MapSquareInt& m1, MapSquare<Object>& m);
 
-    int MAN_PIC_0 = 2501;         //³õÊ¼Ö÷½ÇÍ¼Æ«ÒÆÁ¿
-    int MAN_PIC_COUNT = 7;        //µ¥ÏòÖ÷½ÇÍ¼ÕÅÊı
-    int REST_PIC_0 = 2529;        //Ö÷½ÇĞİÏ¢Í¼Æ«ÒÆÁ¿
-    int REST_PIC_COUNT = 6;       //µ¥ÏòĞİÏ¢Í¼ÕÅÊı
-    int SHIP_PIC_0 = 3715;        //³õÊ¼Ö÷½ÇÍ¼Æ«ÒÆÁ¿
-    int SHIP_PIC_COUNT = 4;       //µ¥ÏòÖ÷½ÇÍ¼ÕÅÊı
-    int BEGIN_REST_TIME = 200;    //¿ªÊ¼ĞİÏ¢µÄÊ±¼ä
-    int REST_INTERVAL = 15;       //ĞİÏ¢Í¼ÇĞ»»¼ä¸ô
+    int MAN_PIC_0 = 2501;         //åˆå§‹ä¸»è§’å›¾åç§»é‡
+    int MAN_PIC_COUNT = 7;        //å•å‘ä¸»è§’å›¾å¼ æ•°
+    int REST_PIC_0 = 2529;        //ä¸»è§’ä¼‘æ¯å›¾åç§»é‡
+    int REST_PIC_COUNT = 6;       //å•å‘ä¼‘æ¯å›¾å¼ æ•°
+    int SHIP_PIC_0 = 3715;        //åˆå§‹ä¸»è§’å›¾åç§»é‡
+    int SHIP_PIC_COUNT = 4;       //å•å‘ä¸»è§’å›¾å¼ æ•°
+    int BEGIN_REST_TIME = 200;    //å¼€å§‹ä¼‘æ¯çš„æ—¶é—´
+    int REST_INTERVAL = 15;       //ä¼‘æ¯å›¾åˆ‡æ¢é—´éš”
 
     int force_submap_ = -1;
     int force_submap_x_ = -1;
     int force_submap_y_ = -1;
     int force_event_ = -1;
 
-    //todo: ĞİÏ¢Î´Íê³É
+    //todo: ä¼‘æ¯æœªå®Œæˆ
 
     std::vector<Cloud> cloud_vector_;
 
@@ -74,15 +58,15 @@ public:
     virtual bool isOutScreen(int x, int y) override;
     virtual bool canWalk(int x, int y) override;
 
-    bool checkEntrance(int x, int y, bool only_check = false);    //Ö÷µØÍ¼Ö÷ÒªÊÇ¼ì²âÈë¿Ú
+    bool checkEntrance(int x, int y, bool only_check = false);    //ä¸»åœ°å›¾ä¸»è¦æ˜¯æ£€æµ‹å…¥å£
 
-    void forceEnterSubScene(int submap_id, int x, int y, int event = -1);    //ÔÚÏÂÒ»¸öÊÂ¼şÑ­»·»áÇ¿ÖÆ½øÈëÄ³³¡¾°£¬ÓÃÓÚ¿ªÊ¼ºÍ¶ÁÈ¡´æµµ
+    void forceEnterSubScene(int submap_id, int x, int y, int event = -1);    //åœ¨ä¸‹ä¸€ä¸ªäº‹ä»¶å¾ªç¯ä¼šå¼ºåˆ¶è¿›å…¥æŸåœºæ™¯ï¼Œç”¨äºå¼€å§‹å’Œè¯»å–å­˜æ¡£
 
     bool inNorth() { return man_x_ + man_y_ <= 220; }
     int view_cloud_ = 0;
     int getViewCloud() { return view_cloud_; }
 
     void setWeather();
-    std::shared_ptr<ParticleWeather> getWeather() { return weather_; }
-    std::shared_ptr<ParticleWeather> weather_;
+    std::shared_ptr<ParticleExample> getWeather() { return weather_; }
+    std::shared_ptr<ParticleExample> weather_;
 };

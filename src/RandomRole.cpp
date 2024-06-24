@@ -5,7 +5,7 @@ RandomRole::RandomRole()
 {
     setShowButton(false);
     button_ok_ = addChild<Button>(350, 55);
-    button_ok_->setText("´_¶¨");
+    button_ok_->setText("ç¢ºå®š");
     head_ = addChild<Head>(-290, 100);
 }
 
@@ -15,7 +15,7 @@ RandomRole::~RandomRole()
 
 void RandomRole::onPressedOK()
 {
-    if (button_ok_->getState() == Press)
+    if (button_ok_->getState() == NodePress)
     {
         result_ = 0;
         setExit(true);
@@ -40,7 +40,11 @@ void RandomRole::onPressedOK()
     role_->Unusual = 25 + r.rand_int(6);
     role_->HiddenWeapon = 25 + r.rand_int(6);
     role_->IQ = 1 + r.rand_int(100);
-    printf("IQ is %d\n", role_->IQ);
+    for (auto& e:role_->EquipMagic)
+    {
+        e = role_->MagicID[0];
+    }
+    fmt1::print("IQ is {}\n", role_->IQ);
 }
 
 void RandomRole::draw()

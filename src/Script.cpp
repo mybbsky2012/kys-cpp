@@ -1,9 +1,73 @@
-#include "Script.h"
+﻿#include "Script.h"
 #include "Event.h"
 #include "EventMacro.h"
+#include "NewSave.h"
 #include "PotConv.h"
-#include "convert.h"
+#include "filefunc.h"
 #include <array>
+#include <functional>
+
+int rModifier(auto data_name, auto getDataFromIndex, lua_State* L)
+{
+    int index = lua_tonumber(L, 1);
+    std::string name = lua_tostring(L, 2);
+    int n = lua_gettop(L);
+    for (auto& info : NewSave::getFieldInfo(data_name))
+    {
+        if (name == info.name)
+        {
+            char* p = (char*)(std::invoke(getDataFromIndex, Save::getInstance(), index)) + info.offset;
+            if (info.type == 0)
+            {
+                if (n == 2)
+                {
+                    lua_pushnumber(L, *(int*)p);
+                }
+                else
+                {
+                    *(int*)p = lua_tonumber(L, 3);
+                }
+            }
+            else
+            {
+                if (n == 2)
+                {
+                    lua_pushstring(L, p);
+                }
+                else
+                {
+                    std::string str = lua_tostring(L, 3);
+                    memset(p, 0, info.length);
+                    memcpy(p, str.c_str(), str.size());
+                }
+            }
+            break;
+        }
+    }
+    if (n == 2)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+int p50_32_value = 0;
+int p50_32_pos = INT_MAX;
+
+int lua_tonumber1(lua_State* L, int idx)
+{
+    int n = lua_gettop(L);
+    int r = lua_tointeger(L, idx);
+    if (idx == p50_32_pos)
+    {
+        r = p50_32_value;
+        p50_32_pos = INT_MAX;
+    }
+    return r;
+}
 
 Script::Script()
 {
@@ -25,14 +89,14 @@ Script::~Script()
 
 int Script::runScript(const std::string& filename)
 {
-    std::string content = convert::readStringFromFile(filename);
-    printf("%s\n", content.c_str());
+    std::string content = filefunc::readFileToString(filename);
+    fmt1::print("{}\n", content.c_str());
     std::transform(content.begin(), content.end(), content.begin(), ::tolower);
     luaL_loadbuffer(lua_state_, content.c_str(), content.size(), "code");
     int r = lua_pcall(lua_state_, 0, 0, 0);
     if (r)
     {
-        printf("\nError: %s\n", lua_tostring(lua_state_, -1));
+        fmt1::print("\nError: {}\n", lua_tostring(lua_state_, -1));
     }
     return r;
 }
@@ -48,7 +112,7 @@ int Script::registerEventFunctions()
             std::array<int, arg_count> args; \
             for (int i = 0; i < arg_count; i++) \
             { \
-                args[i] = lua_tonumber(L, i + 1); \
+                args[i] = lua_tonumber1(L, i + 1); \
             } \
             return runner(&Event::function, Event::getInstance(), args, L); \
         }; \
@@ -133,7 +197,7 @@ int Script::registerEventFunctions()
     REGISTER_INSTRUCT(instruct_0);
     REGISTER_INSTRUCT(instruct_1);
     REGISTER_INSTRUCT(instruct_2);
-    REGISTER_INSTRUCT(instruct_33);
+    REGISTER_INSTRUCT(instruct_3);
     REGISTER_INSTRUCT(instruct_4);
     REGISTER_INSTRUCT(instruct_5);
     REGISTER_INSTRUCT(instruct_6);
@@ -199,7 +263,98 @@ int Script::registerEventFunctions()
     REGISTER_INSTRUCT(instruct_66);
     REGISTER_INSTRUCT(instruct_67);
 
-    //REGISTER_INSTRUCT(instruct_50e, VOID_7);
+    //REGISTER_INSTRUCT(instruct_50e);
+
+    auto instruct_50e = [](lua_State* L) -> int
+    {
+        std::vector<int> args(7);
+        for (int i = 0; i < 7; i++)
+        {
+            args[i] = lua_tonumber1(L, i + 1);
+        }
+        Event::getInstance()->instruct_50e(args[0], args[1], args[2], args[3], args[4], args[5], args[6], &p50_32_pos, &p50_32_value);
+        return 0;
+    };
+    lua_register(lua_state_, "instruct_50e", instruct_50e);
+
+    //以下为新指令
+
+    auto newTalk = [](lua_State* L) -> int
+    {
+        std::vector<int> args(3);
+        for (int i = 1; i < 3; i++)
+        {
+            args[i] = lua_tonumber(L, i + 1);
+        }
+        std::string str(lua_tostring(L, 1));
+        Event::getInstance()->newTalk(str, args[1], args[2]);
+        return 0;
+    };
+    lua_register(lua_state_, "newtalk", newTalk);
+    lua_register(lua_state_, "talk", newTalk);
+
+    auto getItemCountInBag = [](lua_State* L) -> int
+    {
+        int i = lua_tonumber(L, 1);
+        i = Save::getInstance()->getItemCountInBag(i);
+        lua_pushnumber(L, i);
+        return 1;
+    };
+    lua_register(lua_state_, "getitemcountinbag", getItemCountInBag);
+
+    auto autoSave = [](lua_State* L) -> int
+    {
+        Save::getInstance()->save(11);
+        return 0;
+    };
+    lua_register(lua_state_, "autosave", autoSave);
+
+    auto runSql = [](lua_State* L) -> int
+    {
+        std::string cmd(lua_tostring(L, 1));
+        Save::getInstance()->runSql(cmd);
+        return 0;
+    };
+    lua_register(lua_state_, "runsql", runSql);
+
+    auto getRole = [](lua_State* L)
+    {
+        return rModifier("Role", &Save::getRole, L);
+    };
+    lua_register(lua_state_, "getrole", getRole);
+    lua_register(lua_state_, "setrole", getRole);
+
+    auto getItem = [](lua_State* L)
+    {
+        return rModifier("Item", &Save::getItem, L);
+    };
+    lua_register(lua_state_, "getitem", getItem);
+    lua_register(lua_state_, "setitem", getItem);
+
+    auto getMagic = [](lua_State* L)
+    {
+        return rModifier("Magic", &Save::getMagic, L);
+    };
+    lua_register(lua_state_, "getmagic", getMagic);
+    lua_register(lua_state_, "setmagic", getMagic);
+
+    auto getSubMapInfo = [](lua_State* L)
+    {
+        return rModifier("SubMapInfo", &Save::getSubMapInfo, L);
+    };
+    lua_register(lua_state_, "getsubmapinfo", getSubMapInfo);
+    lua_register(lua_state_, "setsubmapinfo", getSubMapInfo);
+
+    auto getShop = [](lua_State* L)
+    {
+        return rModifier("Shop", &Save::getShop, L);
+    };
+    lua_register(lua_state_, "getshop", getShop);
+    lua_register(lua_state_, "setshop", getShop);
+
+    //std::string content = "";
+    //luaL_loadbuffer(lua_state_, content.c_str(), content.size(), "code");
+    //lua_pcall(lua_state_, 0, 0, 0);
 
     return 0;
 }

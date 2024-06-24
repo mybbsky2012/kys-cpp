@@ -2,7 +2,7 @@
 
 #ifdef WITH_NETWORK
 #include "DrawableOnCall.h"
-#include "File.h"
+#include "filefunc.h"
 #include "Font.h"
 #include "GameUtil.h"
 #include "Save.h"
@@ -15,25 +15,25 @@
 
 bool BattleNetwork::sendMyAction(const BattleNetwork::SerializableBattleAction& action)
 {
-    // ´íÎó²»¹Ü
-    printf("sendMyAction\n");
+    // é”™è¯¯ä¸ç®¡
+    fmt1::print("sendMyAction\n");
     asio::async_write(socket_, asio::buffer(&action, sizeof(action)), [](std::error_code err, std::size_t bytes)
     {
-        printf("send %s\n", err.message().c_str());
+        fmt1::print("send {}\n", err.message());
     });
     return true;
 }
 
 bool BattleNetwork::getOpponentAction(BattleNetwork::SerializableBattleAction& action, std::function<void(std::error_code err, std::size_t bytes)> f)
 {
-    printf("getOpponentAction\n");
+    fmt1::print("getOpponentAction\n");
     asio::async_read(socket_, asio::buffer(&action, sizeof(action)), f);
     return true;
 }
 
 void BattleNetwork::nameSetup()
 {
-    // ´«µİÃû×Ö
+    // ä¼ é€’åå­—
     int_buf_ = strID_.size();
     const_bufs_.push_back(asio::buffer(&int_buf_, sizeof(int_buf_)));
     const_bufs_.push_back(asio::buffer(strID_.data(), int_buf_));
@@ -42,16 +42,16 @@ void BattleNetwork::nameSetup()
         CALLBACK_ON_ERROR(err);
         asio::async_read(socket_, asio::buffer(&int_buf_, sizeof(int_buf_)), [this](std::error_code err, std::size_t bytes)
         {
-            // ¶ÁÈ¡½á¹û£¬0Ê§°Ü
+            // è¯»å–ç»“æœï¼Œ0å¤±è´¥
             CALLBACK_ON_ERROR(err);
             if (int_buf_ == 0)
             {
                 err = std::make_error_code(std::errc::not_connected);
                 CALLBACK_ON_ERROR(err);
             }
-            // ÏÂÒ»²½£¬ hostµÈ´ıGO£¬client·¢ËÍGO
+            // ä¸‹ä¸€æ­¥ï¼Œ hostç­‰å¾…GOï¼Œclientå‘é€GO
             int_buf_ = 1;
-            printf("waiting loop\n");
+            fmt1::print("waiting loop\n");
             waitConnection();
         });
     });
@@ -146,7 +146,7 @@ void BattleHost::waitConnection()
     asio::async_read(socket_, asio::buffer(&int_buf_, sizeof(int_buf_)), [this](const std::error_code& err, std::size_t bytes)
     {
         CALLBACK_ON_ERROR(err);
-        printf("got %d\n", int_buf_);
+        fmt1::print("got {}\n", int_buf_);
         if (int_buf_ == BattleClient::GO)
         {
             getRandSeed();
@@ -160,7 +160,7 @@ void BattleHost::waitConnection()
 
 void BattleHost::getRandSeed()
 {
-    printf("exchange protocol started\n");
+    fmt1::print("exchange protocol started\n");
     std::random_device device;
     seed_ = device();
     asio::async_write(socket_, asio::buffer(&seed_, sizeof(seed_)), [this](const std::error_code& err, std::size_t bytes)
@@ -172,8 +172,8 @@ void BattleHost::getRandSeed()
 
 void BattleHost::rDataHandshake()
 {
-    // ÏÈ´«ÊäÈËÊı
-    printf("rDataHandshake\n");
+    // å…ˆä¼ è¾“äººæ•°
+    fmt1::print("rDataHandshake\n");
     int_buf_ = friends_.size();
     asio::async_write(socket_, asio::buffer(&int_buf_, sizeof(int_buf_)), [this](const std::error_code& err, std::size_t bytes)
     {
@@ -187,7 +187,7 @@ void BattleHost::rDataHandshake()
         asio::async_write(socket_, const_bufs_, [this](const std::error_code& err, std::size_t bytes)
         {
             CALLBACK_ON_ERROR(err);
-            // »ñÈ¡¶ÔÃæÈËÊı
+            // è·å–å¯¹é¢äººæ•°
             asio::async_read(socket_, asio::buffer(&int_buf_, sizeof(int_buf_)), [this](const std::error_code& err, std::size_t bytes)
             {
                 CALLBACK_ON_ERROR(err);
@@ -201,7 +201,7 @@ void BattleHost::rDataHandshake()
                 asio::async_read(socket_, mut_bufs_, [this](const std::error_code& err, std::size_t bytes)
                 {
                     CALLBACK_ON_ERROR(err);
-                    // Êı¾İÊÕ¼¯Íê±Ï£¬¿ªÊ¼ÑéÖ¤£¨»òĞíÎÒÓ¦¸ÃÏÈÑéÖ¤£¬²»¹ÜÁË£©
+                    // æ•°æ®æ”¶é›†å®Œæ¯•ï¼Œå¼€å§‹éªŒè¯ï¼ˆæˆ–è®¸æˆ‘åº”è¯¥å…ˆéªŒè¯ï¼Œä¸ç®¡äº†ï¼‰
                     validate();
                 });
             });
@@ -226,7 +226,7 @@ void BattleClient::waitConnection()
 
 void BattleClient::getRandSeed()
 {
-    printf("exchange protocol started\n");
+    fmt1::print("exchange protocol started\n");
     asio::async_read(socket_, asio::buffer(&seed_, sizeof(seed_)), [this](const std::error_code& err, std::size_t bytes)
     {
         CALLBACK_ON_ERROR(err);
@@ -236,14 +236,14 @@ void BattleClient::getRandSeed()
 
 void BattleClient::rDataHandshake()
 {
-    printf("rDataHandshake\n");
-    // ¶ÁÈ¡ÈËÊı
+    fmt1::print("rDataHandshake\n");
+    // è¯»å–äººæ•°
     asio::async_read(socket_, asio::buffer(&int_buf_, sizeof(int_buf_)), [this](const std::error_code& err, std::size_t bytes)
     {
         CALLBACK_ON_ERROR(err);
         mut_bufs_.clear();
         role_result_.reserve(friends_.size() + int_buf_);
-        // ¶ÔÃæ
+        // å¯¹é¢
         for (int i = 0; i < int_buf_; i++)
         {
             role_result_.emplace_back();
@@ -256,7 +256,7 @@ void BattleClient::rDataHandshake()
             asio::async_write(socket_, asio::buffer(&int_buf_, sizeof(int_buf_)), [this](const std::error_code& err, std::size_t bytes)
             {
                 CALLBACK_ON_ERROR(err);
-                // ËÍÈË
+                // é€äºº
                 const_bufs_.clear();
                 for (int i = 0; i < int_buf_; i++)
                 {
@@ -297,7 +297,7 @@ std::unique_ptr<BattleNetwork> BattleNetworkFactory::MakeClient(const std::strin
 
 bool BattleNetworkFactory::UI(BattleNetwork* net)
 {
-    // Ñ¡Ôñ¶ÓÓÑ
+    // é€‰æ‹©é˜Ÿå‹
     auto team = std::make_shared<TeamMenu>();
     team->setMode(1);
     team->run();
@@ -312,12 +312,12 @@ bool BattleNetworkFactory::UI(BattleNetwork* net)
     }
 
     static_assert(BattleNetwork::VALSIZE == picosha2::k_digest_size, "validation size mismatch");
-    // °æ±¾ÑéÖ¤
+    // ç‰ˆæœ¬éªŒè¯
     std::array<unsigned char, BattleNetwork::VALSIZE> version = { 0 };
     std::string verStr(GameUtil::VERSION());
     if (verStr.size() > BattleNetwork::VALSIZE)
     {
-        return nullptr;
+        return false;
     }
     std::memcpy(&version[0], &verStr[0], verStr.size());
     net->addValidation(std::move(version));
@@ -336,14 +336,14 @@ bool BattleNetworkFactory::UI(BattleNetwork* net)
 
     auto f = [](DrawableOnCall* d)
     {
-        Font::getInstance()->draw("µÈ´ı¶Ô·½Íæ¼ÒÁ¬½Ó...", 40, 30, 30, { 200, 200, 50, 255 });
+        Font::getInstance()->draw("ç­‰å¾…å¯¹æ–¹ç©å®¶è¿æ¥...", 40, 30, 30, { 200, 200, 50, 255 });
     };
 
     bool ok = false;
     auto waitThis = std::make_shared<DrawableOnCall>(f);
     auto exit = [&waitThis, &ok](std::error_code err)
     {
-        printf("recv %s\n", err.message().c_str());
+        fmt1::print("recv {}\n", err.message());
         ok = !err;
         waitThis->setExit(true);
     };

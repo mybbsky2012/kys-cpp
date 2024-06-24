@@ -1,5 +1,4 @@
 #pragma once
-#include "Head.h"
 #include "RunNode.h"
 #include "Types.h"
 #include "UIItem.h"
@@ -11,7 +10,7 @@ class UI : public RunNode
 public:
     UI();
     ~UI();
-    //UI单例即可，无需重复创建
+    //UI鍗曚緥鍗冲彲锛屾棤闇�閲嶅鍒涘缓
 private:
     int current_head_ = 0;
     int current_button_ = 0;
